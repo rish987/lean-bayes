@@ -47,24 +47,32 @@ variables {α : Type*} [m : measurable_space α] (μ : measure α)
 
 section definitions
 
+/-- Type class wrapper for measurable sets. -/
 class measurable (s : set α) : Prop :=
 (meas : m.measurable_set' s)
 
 include μ
 
+/-- Represents the notion that a conditional probability measure "exists" for a measure `μ`
+and set `s` exactly when `s` is measurable with nonzero measure. -/
 class cond_measurable (s : set α) extends measurable s :=
 (meas_nz : μ s ≠ 0)
 
+/-- The conditional probability measure of measure `μ` on set `s` is `μ` restricted to `s` 
+and scaled by the inverse of `μ s` (to make it a probability measure). -/
 def cond_measure (s : set α) : measure α :=
   (μ s)⁻¹ • μ.restrict s
 
 end definitions
 
-variable [is_probability_measure μ] 
-
-instance {s : set α} [hcms : cond_measurable μ s] : is_probability_measure (cond_measure μ s) :=
+/-- The conditional probability measure of any finite measure on any conditionable set
+is a probability measure. -/
+instance [is_finite_measure μ] {s : set α} [hcms : cond_measurable μ s] :
+  is_probability_measure (cond_measure μ s) :=
   ⟨by rw [cond_measure, measure.smul_apply, measure.restrict_apply measurable_set.univ,
     set.univ_inter, ennreal.inv_mul_cancel hcms.meas_nz (measure_ne_top _ s)]⟩
+
+variable [is_probability_measure μ] 
 
 section bayes
 
