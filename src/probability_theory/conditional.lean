@@ -78,8 +78,8 @@ section bayes
 
 variables (a : set α)
 
-@[simp]
-lemma cond_def [hma : measurable a] (b : set α) :
+/-- The axiomatic definition of conditional probability derived from a measure-theoretic one. -/
+@[simp] lemma cond_def [hma : measurable a] (b : set α) :
   cond_measure μ a b = (μ a)⁻¹ * μ (a ∩ b) :=
   by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
 
@@ -107,7 +107,9 @@ begin
   rw [measure.restrict_apply' hmcs.meas, set.inter_comm]
 end
 
-lemma cond_cond_def (b : set α) [hcma : cond_measurable μ a]
+/-- Conditioning first on `a` and then on `b` results in the same measure as conditioning
+on `a ∩ b`. -/
+@[simp] lemma cond_cond_eq_cond_inter (b : set α) [hcma : cond_measurable μ a]
   [hcml : cond_measurable (cond_measure μ a) b] [hcmr : cond_measurable μ (a ∩ b)] :
   cond_measure (cond_measure μ a) b = cond_measure μ (a ∩ b) :=
 begin
@@ -120,19 +122,21 @@ begin
     ← set.inter_assoc, mul_comm]
 end
 
-@[simp]
-lemma cond_inter [hcma : cond_measurable μ a] (b : set α) :
+@[simp] lemma cond_inter [hcma : cond_measurable μ a] (b : set α) :
   cond_measure μ a b * (μ a) = μ (a ∩ b) :=
 by rw [cond_def μ a b, mul_comm, ←mul_assoc,
   ennreal.mul_inv_cancel hcma.meas_nz (measure_ne_top _ a), one_mul]
 
+/-- Bayes' Theorem. -/
 theorem bayes [hcma : cond_measurable μ a] {b : set α} [hcmb : cond_measurable μ b] :
-  cond_measure μ a b * (μ a) = cond_measure μ b a * (μ b) :=
-  by rw [cond_inter μ a b, cond_inter μ b a, set.inter_comm]
+  cond_measure μ a b = (μ a)⁻¹ * cond_measure μ b a * (μ b) :=
+  by rw [mul_assoc, cond_inter μ b a, set.inter_comm, cond_def]
 
 section indep
 
-theorem indep_iff [hcma : cond_measurable μ a] (b : set α) [hmb : measurable b] :
+/-- Two measurable sets are independent if and only if conditioning on one
+is irrelevant to the probability of the other. -/
+theorem indep_set_iff_cond_irrel [hcma : cond_measurable μ a] (b : set α) [hmb : measurable b] :
   indep_set a b μ ↔ cond_measure μ a b = μ b :=
 begin
   split,
