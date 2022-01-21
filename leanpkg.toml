@@ -1,0 +1,8 @@
+[package]
+name = "bayes"
+version = "0.0"
+lean_version = "leanprover-community/lean:3.38.0"
+path = "src"
+
+[dependencies]
+mathlib = {git = "https://github.com/leanprover-community/mathlib", rev = "d7f8f580c8b90f7cc50d7c831dbea89d0c47a449"}
