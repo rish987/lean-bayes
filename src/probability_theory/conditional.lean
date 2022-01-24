@@ -128,7 +128,7 @@ by rw [cond_def μ a b, mul_comm, ←mul_assoc,
   ennreal.mul_inv_cancel hcma.meas_nz (measure_ne_top _ a), one_mul]
 
 /-- Bayes' Theorem. -/
-theorem bayes [hcma : cond_measurable μ a] {b : set α} [hcmb : cond_measurable μ b] :
+theorem bayes [hcma : cond_measurable μ a] (b : set α) [hcmb : cond_measurable μ b] :
   cond_measure μ a b = (μ a)⁻¹ * cond_measure μ b a * (μ b) :=
   by rw [mul_assoc, cond_inter μ b a, set.inter_comm, cond_def]
 
@@ -150,6 +150,60 @@ begin
     ennreal.inv_mul_eq_iff_eq_mul hcma.meas_nz (measure_ne_top _ a), set.inter_comm,
     ← measure.restrict_apply hmb.meas]
 end
+
+def cond_Indep_sets {α ι} [measurable_space α] (π : ι → set (set α))
+  (C : set (set α)) (μ : measure α . volume_tac) : Prop :=
+∀ (c : C), Indep_sets π (cond_measure μ c)
+
+def cond_indep_sets {α} [measurable_space α] (s1 s2 : set (set α)) (C : set (set α))
+  (μ : measure α . volume_tac) : Prop :=
+∀ (c : C), indep_sets s1 s2 (cond_measure μ c)
+
+def cond_Indep {α ι} (m : ι → measurable_space α) [measurable_space α] (C : set (set α))
+  (μ : measure α . volume_tac) : Prop :=
+cond_Indep_sets (λ x, (m x).measurable_set') C μ 
+
+lemma cond_Indep_def {α ι} (m : ι → measurable_space α) [measurable_space α]
+  (C : set (set α)) (μ : measure α . volume_tac) :
+  cond_Indep m C μ = ∀ c : C, Indep m (cond_measure μ c) := rfl
+
+def cond_indep {α} (m₁ m₂ : measurable_space α) [measurable_space α] (C : set (set α))
+  (μ : measure α . volume_tac) : Prop :=
+cond_indep_sets (m₁.measurable_set') (m₂.measurable_set') C μ
+
+lemma cond_indep_def {α} (m₁ m₂ : measurable_space α) [measurable_space α] (C : set (set α))
+  (μ : measure α . volume_tac) :
+  cond_indep m₁ m₂ C μ = ∀ c : C, indep m₁ m₂ (cond_measure μ c) := rfl
+
+def cond_Indep_set {α ι} [measurable_space α] (s : ι → set α) (C : set (set α))
+  (μ : measure α . volume_tac) : Prop :=
+cond_Indep (λ i, generate_from {s i}) C μ
+
+lemma cond_Indep_set_def {α ι} [measurable_space α] (s : ι → set α) (C : set (set α))
+  (μ : measure α . volume_tac) : cond_Indep_set s C μ = ∀ c : C, Indep_set s (cond_measure μ c) := rfl
+
+def cond_indep_set {α} [measurable_space α] (s t : set α) (C : set (set α))
+  (μ : measure α . volume_tac) : Prop :=
+cond_indep (generate_from {s}) (generate_from {t}) C μ
+
+def cond_indep_set_def {α} [measurable_space α] (s t : set α) (C : set (set α))
+  (μ : measure α . volume_tac) : cond_indep_set s t C μ = ∀ c : C, indep_set s t (cond_measure μ c) := rfl
+
+def cond_Indep_fun {α ι} [measurable_space α] {β : ι → Type*} (m : Π (x : ι), measurable_space (β x))
+  (f : Π (x : ι), α → β x) (C : set (set α)) (μ : measure α . volume_tac) : Prop :=
+cond_Indep (λ x, measurable_space.comap (f x) (m x)) C μ
+
+def cond_Indep_fun_def {α ι} [measurable_space α] {β : ι → Type*} (m : Π (x : ι), measurable_space (β x))
+  (f : Π (x : ι), α → β x) (C : set (set α)) (μ : measure α . volume_tac) :
+  cond_Indep_fun m f C μ = ∀ c : C, Indep_fun m f (cond_measure μ c) := rfl
+
+def cond_indep_fun {α β γ} [measurable_space α] [mβ : measurable_space β] [mγ : measurable_space γ]
+  (f : α → β) (g : α → γ) (C : set (set α)) (μ : measure α . volume_tac) : Prop :=
+cond_indep (measurable_space.comap f mβ) (measurable_space.comap g mγ) C μ
+
+def cond_indep_fun_def {α ι} [measurable_space α] {β : ι → Type*} (m : Π (x : ι), measurable_space (β x))
+  (f : Π (x : ι), α → β x) (C : set (set α)) (μ : measure α . volume_tac) :
+  cond_Indep_fun m f C μ = ∀ c : C, Indep_fun m f (cond_measure μ c) := rfl
 
 end indep
 
