@@ -4,6 +4,7 @@ import probability_theory.independence
 noncomputable theory
 
 open measure_theory measurable_space
+open_locale classical
 
 namespace ennreal
 
@@ -65,10 +66,13 @@ def cond_measure (s : set α) : measure α :=
 
 end definitions
 
+localized "notation  μ `[` s `|` t `]` := cond_measure μ t s" in probability_theory
+localized "notation  μ `[|` t`]` := cond_measure μ t" in probability_theory
+
 /-- The conditional probability measure of any finite measure on any conditionable set
 is a probability measure. -/
 instance [is_finite_measure μ] {s : set α} [hcms : cond_measurable μ s] :
-  is_probability_measure (cond_measure μ s) :=
+  is_probability_measure (μ[|s]) :=
   ⟨by rw [cond_measure, measure.smul_apply, measure.restrict_apply measurable_set.univ,
     set.univ_inter, ennreal.inv_mul_cancel hcms.meas_nz (measure_ne_top _ s)]⟩
 
@@ -80,11 +84,8 @@ variables (a : set α)
 
 /-- The axiomatic definition of conditional probability derived from a measure-theoretic one. -/
 @[simp] lemma cond_def [hma : measurable a] (b : set α) :
-  cond_measure μ a b = (μ a)⁻¹ * μ (a ∩ b) :=
+  μ[b|a] = (μ a)⁻¹ * μ (a ∩ b) :=
   by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
-
-lemma test (a b : ennreal) (ha: a ≠ 0) (hab : a ≤ b) : b ≠ 0 := by library_search!
-lemma tests (a b : ennreal) : a ≠ 0 → a ≤ b → b ≠ 0 := by library_search!
 
 instance cond_meas_of_cond_meas_inter₀ {s t : set α} [measurable t] [hcmi : cond_measurable μ (s ∩ t)] :
   cond_measurable μ t := ⟨ne_bot_of_le_ne_bot hcmi.meas_nz (μ.mono (set.inter_subset_right _ _))⟩
@@ -92,9 +93,9 @@ instance cond_meas_of_cond_meas_inter₀ {s t : set α} [measurable t] [hcmi : c
 instance cond_meas_of_cond_meas_inter₁ {s t : set α} [measurable s] [hcmi : cond_measurable μ (s ∩ t)] :
   cond_measurable μ s := ⟨ne_bot_of_le_ne_bot hcmi.meas_nz (μ.mono (set.inter_subset_left _ _))⟩
 
-instance cond_cond_meas_of_cond_meas_inter {s t : set α} [hmcs : cond_measurable μ s]
-  [hmt : measurable t] [hcmi : cond_measurable μ (s ∩ t)] :
-  cond_measurable (cond_measure μ s) t :=
+instance cond_cond_meas_of_cond_meas_inter {s t : set α} [cond_measurable μ s]
+  [measurable t] [hcmi : cond_measurable μ (s ∩ t)] :
+  cond_measurable (μ[|s]) t :=
 begin
   constructor,
   rw cond_def,
@@ -104,7 +105,7 @@ begin
 end
 
 instance cond_meas_inter_of_cond_cond_meas {s t : set α} [hmcs : cond_measurable μ s]
-  [hmcc : cond_measurable (cond_measure μ s) t] :
+  [hmcc : cond_measurable (μ[|s]) t] :
   cond_measurable μ (s ∩ t) :=
 begin
   haveI : measurable (s ∩ t) := ⟨measurable_set.inter hmcs.meas hmcc.meas⟩,
@@ -119,8 +120,8 @@ end
 /-- Conditioning first on `a` and then on `b` results in the same measure as conditioning
 on `a ∩ b`. -/
 @[simp] lemma cond_cond_eq_cond_inter (b : set α) [hcma : cond_measurable μ a]
-  [hcml : cond_measurable (cond_measure μ a) b] [hcmr : cond_measurable μ (a ∩ b)] :
-  cond_measure (cond_measure μ a) b = cond_measure μ (a ∩ b) :=
+  [cond_measurable (μ[|a]) b] [hcmr : cond_measurable μ (a ∩ b)] :
+  μ[|a][|b] = (μ[|(a ∩ b)]) :=
 begin
   apply measure.ext,
   intros s hms,
@@ -132,13 +133,13 @@ begin
 end
 
 @[simp] lemma cond_inter [hcma : cond_measurable μ a] (b : set α) :
-  cond_measure μ a b * (μ a) = μ (a ∩ b) :=
+  μ[b|a] * μ a = μ (a ∩ b) :=
 by rw [cond_def μ a b, mul_comm, ←mul_assoc,
   ennreal.mul_inv_cancel hcma.meas_nz (measure_ne_top _ a), one_mul]
 
 /-- Bayes' Theorem. -/
-theorem bayes [hcma : cond_measurable μ a] (b : set α) [hcmb : cond_measurable μ b] :
-  cond_measure μ a b = (μ a)⁻¹ * cond_measure μ b a * (μ b) :=
+theorem bayes [cond_measurable μ a] (b : set α) [cond_measurable μ b] :
+  μ[b|a] = (μ a)⁻¹ * μ[a|b] * (μ b) :=
   by rw [mul_assoc, cond_inter μ b a, set.inter_comm, cond_def]
 
 section indep
@@ -146,7 +147,7 @@ section indep
 /-- Two measurable sets are independent if and only if conditioning on one
 is irrelevant to the probability of the other. -/
 theorem indep_set_iff_cond_irrel [hcma : cond_measurable μ a] (b : set α) [hmb : measurable b] :
-  indep_set a b μ ↔ cond_measure μ a b = μ b :=
+  indep_set a b μ ↔ μ[b|a] = μ b :=
 begin
   split,
     intro hind, 
@@ -162,11 +163,11 @@ end
 
 def cond_Indep_sets {α ι} [measurable_space α] (π : ι → set (set α))
   (C : set (set α)) (μ : measure α . volume_tac) : Prop :=
-∀ (c ∈ C), Indep_sets π (cond_measure μ c)
+∀ (c ∈ C), Indep_sets π (μ[|c])
 
 def cond_indep_sets {α} [measurable_space α] (s1 s2 : set (set α)) (C : set (set α))
   (μ : measure α . volume_tac) : Prop :=
-∀ (c ∈ C), indep_sets s1 s2 (cond_measure μ c)
+∀ (c ∈ C), indep_sets s1 s2 (μ[|c])
 
 def cond_Indep {α ι} (m : ι → measurable_space α) [measurable_space α] (C : set (set α))
   (μ : measure α . volume_tac) : Prop :=
@@ -174,7 +175,7 @@ cond_Indep_sets (λ x, (m x).measurable_set') C μ
 
 lemma cond_Indep_def {α ι} (m : ι → measurable_space α) [measurable_space α]
   (C : set (set α)) (μ : measure α . volume_tac) :
-  cond_Indep m C μ = ∀ c ∈ C, Indep m (cond_measure μ c) := rfl
+  cond_Indep m C μ = ∀ c ∈ C, Indep m (μ[|c]) := rfl
 
 def cond_indep {α} (m₁ m₂ : measurable_space α) [measurable_space α] (C : set (set α))
   (μ : measure α . volume_tac) : Prop :=
@@ -182,14 +183,14 @@ cond_indep_sets (m₁.measurable_set') (m₂.measurable_set') C μ
 
 lemma cond_indep_def {α} (m₁ m₂ : measurable_space α) [measurable_space α] (C : set (set α))
   (μ : measure α . volume_tac) :
-  cond_indep m₁ m₂ C μ = ∀ c ∈ C, indep m₁ m₂ (cond_measure μ c) := rfl
+  cond_indep m₁ m₂ C μ = ∀ c ∈ C, indep m₁ m₂ (μ[|c]) := rfl
 
 def cond_Indep_set {α ι} [measurable_space α] (s : ι → set α) (C : set (set α))
   (μ : measure α . volume_tac) : Prop :=
 cond_Indep (λ i, generate_from {s i}) C μ
 
 lemma cond_Indep_set_def {α ι} [measurable_space α] (s : ι → set α) (C : set (set α))
-  (μ : measure α . volume_tac) : cond_Indep_set s C μ = ∀ c ∈ C, Indep_set s (cond_measure μ c) := rfl
+  (μ : measure α . volume_tac) : cond_Indep_set s C μ = ∀ c ∈ C, Indep_set s (μ[|c]) := rfl
 
 def cond_indep_set {α} [measurable_space α] (s t : set α) (C : set (set α))
   (μ : measure α . volume_tac) : Prop :=
@@ -201,13 +202,13 @@ cond_indep_set s t {c} μ
 
 def cond_indep_set_def {α} [measurable_space α] (s t : set α) (C : set (set α))
   (μ : measure α . volume_tac) :
-  cond_indep_set s t C μ = ∀ c ∈ C, indep_set s t (cond_measure μ c) := rfl
+  cond_indep_set s t C μ = ∀ c ∈ C, indep_set s t (μ[|c]) := rfl
 
 def cond_indep_set_def' {α} [measurable_space α] (s t : set α) (c : set α)
   (μ : measure α . volume_tac) :
-  cond_indep_set' s t c μ = indep_set s t (cond_measure μ c) :=
+  cond_indep_set' s t c μ = indep_set s t (μ[|c]) :=
   by have :
-  cond_indep_set' s t c μ = ∀ (x ∈ {x | x = c}), indep_set s t (cond_measure μ x) := rfl;
+  cond_indep_set' s t c μ = ∀ (x ∈ {x | x = c}), indep_set s t (μ[|x]) := rfl;
   simp [this]
 
 def cond_Indep_fun {α ι} [measurable_space α] {β : ι → Type*}
@@ -218,7 +219,7 @@ cond_Indep (λ x, measurable_space.comap (f x) (m x)) C μ
 def cond_Indep_fun_def {α ι} [measurable_space α] {β : ι → Type*}
   (m : Π (x : ι), measurable_space (β x))
   (f : Π (x : ι), α → β x) (C : set (set α)) (μ : measure α . volume_tac) :
-  cond_Indep_fun m f C μ = ∀ c ∈ C, Indep_fun m f (cond_measure μ c) := rfl
+  cond_Indep_fun m f C μ = ∀ c ∈ C, Indep_fun m f (μ[|c]) := rfl
 
 def cond_indep_fun {α β γ} [measurable_space α] [mβ : measurable_space β]
   [mγ : measurable_space γ]
@@ -228,12 +229,12 @@ cond_indep (measurable_space.comap f mβ) (measurable_space.comap g mγ) C μ
 def cond_indep_fun_def {α ι} [measurable_space α] {β : ι → Type*}
   (m : Π (x : ι), measurable_space (β x))
   (f : Π (x : ι), α → β x) (C : set (set α)) (μ : measure α . volume_tac) :
-  cond_Indep_fun m f C μ = ∀ c ∈ C, Indep_fun m f (cond_measure μ c) := rfl
+  cond_Indep_fun m f C μ = ∀ c ∈ C, Indep_fun m f (μ[|c]) := rfl
 
 theorem cond_indep_set_iff_cond_inter_irrel [measurable a]
-  (b : set α) [hmb : measurable b]
-  (c : set α) [hmc : measurable c] [hcmab : cond_measurable μ (c ∩ a)]:
-  cond_indep_set' a b c μ ↔ cond_measure μ (c ∩ a) b = cond_measure μ c b :=
+  (b : set α) [measurable b]
+  (c : set α) [measurable c] [cond_measurable μ (c ∩ a)]:
+  cond_indep_set' a b c μ ↔ μ[b|(c ∩ a)] = μ[b|c] :=
 begin
   rw [cond_indep_set_def', ← cond_cond_eq_cond_inter, indep_set_iff_cond_irrel]
 end
