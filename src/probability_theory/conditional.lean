@@ -4,7 +4,6 @@ import probability_theory.independence
 noncomputable theory
 
 open measure_theory measurable_space
-open_locale classical
 
 namespace ennreal
 
@@ -86,6 +85,11 @@ variables (a : set α)
 @[simp] lemma cond_def [hma : measurable a] (b : set α) :
   μ[b|a] = (μ a)⁻¹ * μ (a ∩ b) :=
   by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
+
+-- TODO can I replace the below two instances with something like this?
+--instance cond_meas_of_cond_meas_subset {s t : set α} [measurable t]
+--  [hcmi : cond_measurable μ s] [hsub : inhabited (s ⊆ t)] :
+--  cond_measurable μ t := ⟨ne_bot_of_le_ne_bot hcmi.meas_nz (μ.mono hsub.default)⟩
 
 instance cond_meas_of_cond_meas_inter₀ {s t : set α} [measurable t] [hcmi : cond_measurable μ (s ∩ t)] :
   cond_measurable μ t := ⟨ne_bot_of_le_ne_bot hcmi.meas_nz (μ.mono (set.inter_subset_right _ _))⟩
@@ -234,10 +238,8 @@ def cond_indep_fun_def {α ι} [measurable_space α] {β : ι → Type*}
 theorem cond_indep_set_iff_cond_inter_irrel [measurable a]
   (b : set α) [measurable b]
   (c : set α) [measurable c] [cond_measurable μ (c ∩ a)]:
-  cond_indep_set' a b c μ ↔ μ[b|(c ∩ a)] = μ[b|c] :=
-begin
-  rw [cond_indep_set_def', ← cond_cond_eq_cond_inter, indep_set_iff_cond_irrel]
-end
+  cond_indep_set' a b c μ ↔ μ[b|c ∩ a] = μ[b|c] :=
+  by rw [cond_indep_set_def', ← cond_cond_eq_cond_inter, indep_set_iff_cond_irrel]
 
 end indep
 
