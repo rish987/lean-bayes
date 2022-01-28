@@ -2,8 +2,9 @@ import measure_theory.measure.measure_space
 
 namespace measurable_space
 
-variables {α δ γ : Type*} {π : δ → Type*} [measurable_space α]
-  [Π a, measurable_space (π a)] [measurable_space γ]
+variables {δ : Type*} {π : δ → Type*}
+  [hmp : Π a, measurable_space (π a)]
+include hmp
 
 lemma measurable_pi_subtype (s : set δ) :
   measurable (λ (g : Π (i : δ), π i) (i : s), g i) :=
@@ -12,7 +13,7 @@ begin
   intro a,
   rw measurable_iff_comap_le,
   -- FIXME why can't the lambda below be inferred?
-  exact le_supr (λ a, (_inst_2 a).comap (λ (b : Π a, π a), b a)) _,
+  exact le_supr (λ a, (hmp a).comap (λ (b : Π a, π a), b a)) _,
 end
 
 end measurable_space
