@@ -1,10 +1,6 @@
 import measure_theory.measure.measure_space
 import probability_theory.independence
 
-noncomputable theory
-
-open measure_theory measurable_space
-
 namespace ennreal
 
 lemma inv_mul_eq_iff_eq_mul {x y z : ennreal} (hnz : z ≠ 0) (hnt : z ≠ ⊤) :
@@ -38,6 +34,10 @@ begin
 end
 
 end ennreal
+
+noncomputable theory
+
+open measure_theory measurable_space
 
 namespace probability_theory
 
