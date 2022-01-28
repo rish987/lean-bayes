@@ -52,7 +52,7 @@ by rw [joint, map_map _ (measurable_pi_iff.mpr hm), function.comp];
 /-- The marginal probability of a particular "marginal assignment" measurable set `s`
 is equivalent to the joint probability of that same set, extended to allow the
 unassigned variables to take any value. -/
-theorem marginalization (hm : ∀ i : ι, measurable (f i)) (mv : set ι) 
+theorem marginalization (mv : set ι) 
   (s : set (Π i : mv, β i)) (hms : measurable_set s) :
   marginal μ f mv s = joint μ f ((λ (g : Π i, β i) (i : mv), g i) ⁻¹' s) :=
 by rw [marginalization_aux _ _ hm, map_apply _ hms];
