@@ -84,7 +84,7 @@ variables (a : set α)
 /-- The axiomatic definition of conditional probability derived from a measure-theoretic one. -/
 @[simp] lemma cond_def [hma : measurable a] (b : set α) :
   μ[b|a] = (μ a)⁻¹ * μ (a ∩ b) :=
-  by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
+by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
 
 -- TODO can I replace the below two instances with something like this?
 --instance cond_meas_of_cond_meas_subset {s t : set α} [measurable t]
@@ -144,7 +144,7 @@ by rw [cond_def μ a b, mul_comm, ←mul_assoc,
 /-- Bayes' Theorem. -/
 theorem bayes [cond_measurable μ a] (b : set α) [cond_measurable μ b] :
   μ[b|a] = (μ a)⁻¹ * μ[a|b] * (μ b) :=
-  by rw [mul_assoc, cond_inter μ b a, set.inter_comm, cond_def]
+by rw [mul_assoc, cond_inter μ b a, set.inter_comm, cond_def]
 
 section indep
 
@@ -211,8 +211,7 @@ def cond_indep_set_def {α} [measurable_space α] (s t : set α) (C : set (set �
 def cond_indep_set_def' {α} [measurable_space α] (s t : set α) (c : set α)
   (μ : measure α . volume_tac) :
   cond_indep_set' s t c μ = indep_set s t (μ[|c]) :=
-  by have :
-  cond_indep_set' s t c μ = ∀ (x ∈ {x | x = c}), indep_set s t (μ[|x]) := rfl;
+by have : cond_indep_set' s t c μ = ∀ (x ∈ {x | x = c}), indep_set s t (μ[|x]) := rfl;
   simp [this]
 
 def cond_Indep_fun {α ι} [measurable_space α] {β : ι → Type*}
@@ -239,7 +238,7 @@ theorem cond_indep_set_iff_cond_inter_irrel [measurable a]
   (b : set α) [measurable b]
   (c : set α) [measurable c] [cond_measurable μ (c ∩ a)]:
   cond_indep_set' a b c μ ↔ μ[b|c ∩ a] = μ[b|c] :=
-  by rw [cond_indep_set_def', ← cond_cond_eq_cond_inter, indep_set_iff_cond_irrel]
+by rw [cond_indep_set_def', ← cond_cond_eq_cond_inter, indep_set_iff_cond_irrel]
 
 end indep
 
