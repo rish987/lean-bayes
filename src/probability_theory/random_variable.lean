@@ -1,5 +1,8 @@
 import measure_theory.measure.measure_space
 
+-- TODO does this already exist?
+def pi_subtype {α : Type*} {β : α → Type*} (mv : set α) := λ (g : Π i, β i) (i : mv), g i
+
 namespace measurable_space
 
 variables {δ : Type*} {π : δ → Type*}
@@ -7,7 +10,7 @@ variables {δ : Type*} {π : δ → Type*}
 include hmp
 
 lemma measurable_pi_subtype (s : set δ) :
-  measurable (λ (g : Π (i : δ), π i) (i : s), g i) :=
+  measurable (@pi_subtype δ π s) :=
 begin
   rw measurable_pi_iff,
   intro a,
@@ -37,8 +40,7 @@ def joint : measure (Π i : ι, β i) := map (λ a i, f i a) μ
 /-- The marginal distribution induced by an indexed family of random variables `f`
 restriced to a subset of "marginalizing variable" indices `mv` (represented as
 an index subtype). -/
-def marginal (mv : set ι) : measure (Π i : mv, β i) :=
-  joint μ (λ (i : mv) a, f i a)
+def marginal (mv : set ι) : measure (Π i : mv, β i) := joint μ (pi_subtype mv f)
 
 end definitions
 
@@ -46,7 +48,7 @@ variable (hm : ∀ i : ι, measurable (f i))
 include hm
 
 lemma marginalization_aux (mv : set ι) :
-  marginal μ f mv = map (λ (g : Π i, β i) (i : mv), g i) (joint μ f) :=
+  marginal μ f mv = map (pi_subtype mv) (joint μ f) :=
 by rw [joint, map_map _ (measurable_pi_iff.mpr hm), function.comp];
   try {refl}; exact measurable_pi_subtype _
 
@@ -55,8 +57,7 @@ is equal to the joint probability of that same set, extended to allow the unassi
 variables to take any value. -/
 theorem marginalization (mv : set ι) 
   (s : set (Π i : mv, β i)) (hms : measurable_set s) :
-  marginal μ f mv s = joint μ f ((λ (g : Π i, β i) (i : mv), g i) ⁻¹' s) :=
-by rw [marginalization_aux _ _ hm, map_apply _ hms];
-  exact measurable_pi_subtype _
+  marginal μ f mv s = joint μ f ((pi_subtype mv) ⁻¹' s) :=
+by rw [marginalization_aux _ _ hm, map_apply _ hms]; exact measurable_pi_subtype _
 
 end probability_theory
