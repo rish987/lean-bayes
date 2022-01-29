@@ -1,4 +1,5 @@
 import measure_theory.measure.measure_space
+import probability_theory.independence
 
 -- TODO does this already exist?
 def pi_subtype {α : Type*} {β : α → Type*} (mv : set α) := λ (g : Π i, β i) (i : mv), g i
@@ -44,6 +45,8 @@ def marginal (mv : set ι) : measure (Π i : mv, β i) := joint μ (pi_subtype m
 
 end definitions
 
+section marginal
+
 variable (hm : ∀ i : ι, measurable (f i))
 include hm
 
@@ -59,5 +62,28 @@ theorem marginalization (mv : set ι)
   (s : set (Π i : mv, β i)) (hms : measurable_set s) :
   marginal μ f mv s = joint μ f ((pi_subtype mv) ⁻¹' s) :=
 by rw [marginalization_aux _ _ hm, map_apply _ hms]; exact measurable_pi_subtype _
+
+end marginal
+
+section independence
+
+section definitions
+
+def comap_subtype (S : set ι) :
+  measurable_space (Π i : ι, β i) := measurable_space.comap (pi_subtype S) infer_instance
+
+/-- A list of sets of random variables `S` is independent if the list of measurable spaces
+it incurs on the joint distribution is independent. -/
+def Independent {ι' : Type*} (S : ι' → set ι) : Prop :=
+  Indep (λ i, comap_subtype (S i)) (joint μ f)
+
+/-- Two sets of random variables `A` and `B` are independent if the measurable spaces
+they incur on the joint distribution are independent. -/
+def independent (A B : set ι) : Prop :=
+  indep (comap_subtype A) (comap_subtype B) (joint μ f)
+
+end definitions
+
+end independence
 
 end probability_theory
