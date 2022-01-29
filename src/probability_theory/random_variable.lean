@@ -1,5 +1,6 @@
 import measure_theory.measure.measure_space
 import probability_theory.independence
+import probability_theory.conditional
 
 -- TODO does this already exist?
 def pi_subtype {α : Type*} {β : α → Type*} (mv : set α) := λ (g : Π i, β i) (i : mv), g i
@@ -43,6 +44,10 @@ restriced to a subset of "marginalizing variable" indices `mv` (represented as
 an index subtype). -/
 def marginal (mv : set ι) : measure (Π i : mv, β i) := joint μ (pi_subtype mv f)
 
+/-- Generic marginalization of the joint measure `μ` on the given subset of variables `mv`. -/
+def marginalization (μ : measure (Π i : ι, β i)) (mv : set ι) :
+  measure (Π i : mv, β i) := map (pi_subtype mv) μ
+
 end definitions
 
 section marginal
@@ -50,20 +55,28 @@ section marginal
 variable (hm : ∀ i : ι, measurable (f i))
 include hm
 
-lemma marginalization_aux (mv : set ι) :
-  marginal μ f mv = map (pi_subtype mv) (joint μ f) :=
-by rw [joint, map_map _ (measurable_pi_iff.mpr hm), function.comp];
+lemma marginal_eq_marginalization_aux (mv : set ι) :
+  marginal μ f mv = marginalization (joint μ f) mv :=
+by rw [marginalization, joint, map_map _ (measurable_pi_iff.mpr hm), function.comp];
   try {refl}; exact measurable_pi_subtype _
 
 /-- The marginal probability of a particular "marginal assignment" measurable set `s`
 is equal to the joint probability of that same set, extended to allow the unassigned
 variables to take any value. -/
-theorem marginalization (mv : set ι) 
+theorem marginal_eq_marginalization (mv : set ι) 
   (s : set (Π i : mv, β i)) (hms : measurable_set s) :
   marginal μ f mv s = joint μ f ((pi_subtype mv) ⁻¹' s) :=
-by rw [marginalization_aux _ _ hm, map_apply _ hms]; exact measurable_pi_subtype _
+by rw [marginal_eq_marginalization_aux _ _ hm, marginalization, map_apply _ hms];
+  exact measurable_pi_subtype _
 
 end marginal
+
+section conditional
+
+def cond (A B : set ι) (c : set (Π i : B, β i)) : measure (Π i : A, β i) := 
+  marginal (cond_measure μ ((λ a i, f i a) ⁻¹' ((pi_subtype B) ⁻¹' c))) f A
+
+end conditional
 
 section independence
 

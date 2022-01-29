@@ -48,14 +48,14 @@ variables {α : Type*} [m : measurable_space α] (μ : measure α)
 section definitions
 
 /-- Type class wrapper for measurable sets. -/
-class measurable (s : set α) : Prop :=
+class meas (s : set α) : Prop :=
 (meas : m.measurable_set' s)
 
 include μ
 
 /-- Represents the notion that a conditional probability measure "exists" for a measure `μ`
 and set `s` exactly when `s` is measurable with nonzero measure. -/
-class cond_measurable (s : set α) extends measurable s :=
+class cond_measurable (s : set α) extends meas s :=
 (meas_nz : μ s ≠ 0)
 
 /-- The conditional probability measure of measure `μ` on set `s` is `μ` restricted to `s` 
@@ -82,23 +82,23 @@ section bayes
 variables (a : set α)
 
 /-- The axiomatic definition of conditional probability derived from a measure-theoretic one. -/
-@[simp] lemma cond_def [hma : measurable a] (b : set α) :
+@[simp] lemma cond_def [hma : meas a] (b : set α) :
   μ[b|a] = (μ a)⁻¹ * μ (a ∩ b) :=
 by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
 
 -- TODO can I replace the below two instances with something like this?
---instance cond_meas_of_cond_meas_subset {s t : set α} [measurable t]
+--instance cond_meas_of_cond_meas_subset {s t : set α} [meas t]
 --  [hcmi : cond_measurable μ s] [hsub : inhabited (s ⊆ t)] :
 --  cond_measurable μ t := ⟨ne_bot_of_le_ne_bot hcmi.meas_nz (μ.mono hsub.default)⟩
 
-instance cond_meas_of_cond_meas_inter₀ {s t : set α} [measurable t] [hcmi : cond_measurable μ (s ∩ t)] :
+instance cond_meas_of_cond_meas_inter₀ {s t : set α} [meas t] [hcmi : cond_measurable μ (s ∩ t)] :
   cond_measurable μ t := ⟨ne_bot_of_le_ne_bot hcmi.meas_nz (μ.mono (set.inter_subset_right _ _))⟩
 
-instance cond_meas_of_cond_meas_inter₁ {s t : set α} [measurable s] [hcmi : cond_measurable μ (s ∩ t)] :
+instance cond_meas_of_cond_meas_inter₁ {s t : set α} [meas s] [hcmi : cond_measurable μ (s ∩ t)] :
   cond_measurable μ s := ⟨ne_bot_of_le_ne_bot hcmi.meas_nz (μ.mono (set.inter_subset_left _ _))⟩
 
 instance cond_cond_meas_of_cond_meas_inter {s t : set α} [cond_measurable μ s]
-  [measurable t] [hcmi : cond_measurable μ (s ∩ t)] :
+  [meas t] [hcmi : cond_measurable μ (s ∩ t)] :
   cond_measurable (μ[|s]) t :=
 begin
   constructor,
@@ -112,7 +112,7 @@ instance cond_meas_inter_of_cond_cond_meas {s t : set α} [hmcs : cond_measurabl
   [hmcc : cond_measurable (μ[|s]) t] :
   cond_measurable μ (s ∩ t) :=
 begin
-  haveI : measurable (s ∩ t) := ⟨measurable_set.inter hmcs.meas hmcc.meas⟩,
+  haveI : meas (s ∩ t) := ⟨measurable_set.inter hmcs.meas hmcc.meas⟩,
   constructor,
   refine (right_ne_zero_of_mul _),
   exact (μ s)⁻¹,
@@ -150,7 +150,7 @@ section indep
 
 /-- Two measurable sets are independent if and only if conditioning on one
 is irrelevant to the probability of the other. -/
-theorem indep_set_iff_cond_irrel [hcma : cond_measurable μ a] (b : set α) [hmb : measurable b] :
+theorem indep_set_iff_cond_irrel [hcma : cond_measurable μ a] (b : set α) [hmb : meas b] :
   indep_set a b μ ↔ μ[b|a] = μ b :=
 begin
   split,
@@ -234,9 +234,9 @@ def cond_indep_fun_def {α ι} [measurable_space α] {β : ι → Type*}
   (f : Π (x : ι), α → β x) (C : set (set α)) (μ : measure α . volume_tac) :
   cond_Indep_fun m f C μ = ∀ c ∈ C, Indep_fun m f (μ[|c]) := rfl
 
-theorem cond_indep_set_iff_cond_inter_irrel [measurable a]
-  (b : set α) [measurable b]
-  (c : set α) [measurable c] [cond_measurable μ (c ∩ a)]:
+theorem cond_indep_set_iff_cond_inter_irrel [meas a]
+  (b : set α) [meas b]
+  (c : set α) [meas c] [cond_measurable μ (c ∩ a)]:
   cond_indep_set' a b c μ ↔ μ[b|c ∩ a] = μ[b|c] :=
 by rw [cond_indep_set_def', ← cond_cond_eq_cond_inter, indep_set_iff_cond_irrel]
 
