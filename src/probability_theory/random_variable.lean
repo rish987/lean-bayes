@@ -105,7 +105,7 @@ def cond (A B : set ι) (c : set (Π i : B, β i)) : measure (Π i : A, β i) :=
 end definitions
 
 theorem independent_iff_cond_irrel (A B : set ι) :
-  independent μ f A B ↔ ∀ (c : set (Π i : B, β i)), cond_measurable (marginal μ f B) c
+  independent μ f A B ↔ ∀ (c : set (Π i : B, β i)), cond_meas (marginal μ f B) c
   → cond μ f A B c = marginal μ f A :=
 begin
   sorry
