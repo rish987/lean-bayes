@@ -55,7 +55,7 @@ include μ
 
 /-- Represents the notion that a conditional probability measure "exists" for a measure `μ`
 and set `s` exactly when `s` is measurable with nonzero measure. -/
-class cond_measurable (s : set α) extends meas s :=
+class cond_measurable (s : set α) extends meas s : Prop :=
 (meas_nz : μ s ≠ 0)
 
 /-- The conditional probability measure of measure `μ` on set `s` is `μ` restricted to `s` 
@@ -64,6 +64,17 @@ def cond_measure (s : set α) : measure α :=
   (μ s)⁻¹ • μ.restrict s
 
 end definitions
+
+-- TODO can this theorem be inferred automatically somehow?
+lemma cond_measurable_iff (s : set α) : cond_measurable μ s ↔ μ s ≠ 0 ∧ m.measurable_set' s :=
+begin
+  split,
+    intro hcms,
+    exact ⟨hcms.meas_nz, hcms.meas⟩,
+  rintro ⟨hnz, hm⟩,
+  haveI := meas.mk hm,
+  exact ⟨hnz⟩
+end
 
 localized "notation  μ `[` s `|` t `]` := cond_measure μ t s" in probability_theory
 localized "notation  μ `[|` t`]` := cond_measure μ t" in probability_theory
@@ -85,6 +96,9 @@ variables (a : set α)
 @[simp] lemma cond_def [hma : meas a] (b : set α) :
   μ[b|a] = (μ a)⁻¹ * μ (a ∩ b) :=
 by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
+
+instance meas_inter_of_meas [measurable_space α] {s t : set α} [h1 : meas s] [h2 : meas t] :
+  meas (s ∩ t) := ⟨measurable_set.inter h1.meas h2.meas⟩
 
 -- TODO can I replace the below two instances with something like this?
 --instance cond_meas_of_cond_meas_subset {s t : set α} [meas t]
@@ -150,19 +164,28 @@ section indep
 
 /-- Two measurable sets are independent if and only if conditioning on one
 is irrelevant to the probability of the other. -/
-theorem indep_set_iff_cond_irrel [hcma : cond_measurable μ a] (b : set α) [hmb : meas b] :
-  indep_set a b μ ↔ μ[b|a] = μ b :=
+theorem indep_set_iff_cond_irrel [hma : meas a] (b : set α) [hmb : meas b] :
+  indep_set a b μ ↔ cond_measurable μ a → μ[b|a] = μ b :=
 begin
   split,
-    intro hind, 
+    intros hind hcma, 
+    haveI := hcma,
     rw [cond_def μ a b, (indep_set_iff_measure_inter_eq_mul hcma.meas hmb.meas μ).mp hind,
       ← mul_assoc, ennreal.inv_mul_cancel hcma.meas_nz (measure_ne_top _ a), one_mul],
-  intro hcond, 
-  refine (indep_set_iff_indep_sets_singleton hcma.meas hmb.meas μ).mpr _,
-  intros a' b' ha' hb',
-  rwa [set.mem_singleton_iff.mp ha', set.mem_singleton_iff.mp hb',
-    ennreal.inv_mul_eq_iff_eq_mul hcma.meas_nz (measure_ne_top _ a), set.inter_comm,
-    ← measure.restrict_apply hmb.meas]
+  intro hcondi, 
+  by_cases hcma : cond_measurable μ a,
+  { have hcond := hcondi hcma,
+    refine (indep_set_iff_indep_sets_singleton hcma.meas hmb.meas μ).mpr _,
+    intros a' b' ha' hb',
+    rwa [set.mem_singleton_iff.mp ha', set.mem_singleton_iff.mp hb',
+      ennreal.inv_mul_eq_iff_eq_mul hcma.meas_nz (measure_ne_top _ a), set.inter_comm,
+      ← measure.restrict_apply hmb.meas] },
+  { have hz : μ a = 0,
+    {  simp [cond_measurable_iff] at hcma,
+       exact not_imp_not.mp hcma hma.meas },
+    rw indep_set_iff_measure_inter_eq_mul hma.meas hmb.meas μ,
+    simp [measure_inter_null_of_null_left, hz]
+    }
 end
 
 def cond_Indep_sets {α ι} [measurable_space α] (π : ι → set (set α))
@@ -234,11 +257,26 @@ def cond_indep_fun_def {α ι} [measurable_space α] {β : ι → Type*}
   (f : Π (x : ι), α → β x) (C : set (set α)) (μ : measure α . volume_tac) :
   cond_Indep_fun m f C μ = ∀ c ∈ C, Indep_fun m f (μ[|c]) := rfl
 
+theorem cond_meas_inter [meas a] (b : set α) [meas b]
+  : cond_measurable μ (b ∩ a) ↔ cond_measurable (μ[|b]) a :=
+begin
+  split; intro hcm; constructor,
+    rw cond_def,
+    simp [hcm.meas_nz, measure_ne_top],
+  have := hcm.meas_nz,
+  simp [cond_def, not_or_distrib] at this,
+  exact this.2
+end
+
 theorem cond_indep_set_iff_cond_inter_irrel [meas a]
   (b : set α) [meas b]
-  (c : set α) [meas c] [cond_measurable μ (c ∩ a)]:
-  cond_indep_set' a b c μ ↔ μ[b|c ∩ a] = μ[b|c] :=
-by rw [cond_indep_set_def', ← cond_cond_eq_cond_inter, indep_set_iff_cond_irrel]
+  (c : set α) [cond_measurable μ c] :
+  cond_indep_set' a b c μ ↔ cond_measurable μ (c ∩ a) → μ[b|c ∩ a] = μ[b|c] :=
+begin
+  have : cond_measurable μ (c ∩ a) → (μ[b|c ∩ a] = μ[b|c] ↔ (μ[|c][|a]) b = μ[b|c]),
+  { intro h, haveI := h, rw ← cond_cond_eq_cond_inter },
+  rw [cond_indep_set_def', forall_congr this, cond_meas_inter, indep_set_iff_cond_irrel],
+end
 
 end indep
 

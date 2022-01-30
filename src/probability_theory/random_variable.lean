@@ -2,13 +2,12 @@ import measure_theory.measure.measure_space
 import probability_theory.independence
 import probability_theory.conditional
 
--- TODO does this already exist?
+-- TODO subtype.restrict?
 def pi_subtype {α : Type*} {β : α → Type*} (mv : set α) := λ (g : Π i, β i) (i : mv), g i
 
 namespace measurable_space
 
-variables {δ : Type*} {π : δ → Type*}
-  [hmp : Π a, measurable_space (π a)]
+variables {δ : Type*} {π : δ → Type*} [hmp : Π a, measurable_space (π a)]
 include hmp
 
 lemma measurable_pi_subtype (s : set δ) :
@@ -71,12 +70,7 @@ by rw [marginal_eq_marginalization_aux _ _ hm, marginalization, map_apply _ hms]
 
 end marginal
 
-section conditional
-
-def cond (A B : set ι) (c : set (Π i : B, β i)) : measure (Π i : A, β i) := 
-  marginal (cond_measure μ ((λ a i, f i a) ⁻¹' ((pi_subtype B) ⁻¹' c))) f A
-
-end conditional
+-----
 
 section independence
 
@@ -98,5 +92,25 @@ def independent (A B : set ι) : Prop :=
 end definitions
 
 end independence
+
+-----
+
+section conditional
+
+section definitions
+
+def cond (A B : set ι) (c : set (Π i : B, β i)) : measure (Π i : A, β i) := 
+  marginal (cond_measure μ ((λ a i, f i a) ⁻¹' ((pi_subtype B) ⁻¹' c))) f A
+
+end definitions
+
+theorem independent_iff_cond_irrel (A B : set ι) :
+  independent μ f A B ↔ ∀ (c : set (Π i : B, β i)), cond_measurable (marginal μ f B) c
+  → cond μ f A B c = marginal μ f A :=
+begin
+  sorry
+end
+
+end conditional
 
 end probability_theory
