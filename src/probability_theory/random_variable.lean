@@ -11,10 +11,8 @@ lemma ball_mem_comm' {α β} [has_mem α β] {s t : β} {p : α → α → Prop}
 
 namespace measurable_space
 
-variables {δ : Type*} {π : δ → Type*} [hmp : Π a, measurable_space (π a)]
-include hmp
-
-lemma measurable_pi_subtype (s : set δ) :
+lemma measurable_pi_subtype {δ : Type*} {π : δ → Type*}
+  [hmp : Π a, measurable_space (π a)] (s : set δ) :
   measurable (@pi_subtype δ π s) :=
 begin
   rw measurable_pi_iff,
@@ -32,6 +30,14 @@ noncomputable theory
 
 namespace probability_theory
 
+lemma map_map' {α β γ : Type*} [measurable_space α] [measurable_space β] [measurable_space γ]
+{g : β → γ} {f : α → β} [hg : fmeas g] [hf : fmeas f] (μ : measure α) :
+  map g (map f μ) = map (g ∘ f) μ := map_map hg.fmeas hf.fmeas
+
+lemma map_apply' {α : Type*} {β : Type*} [measurable_space α] [measurable_space β]
+  {μ : measure α} {f : α → β} [hfm : fmeas f] (s : set β) [hms : meas s]
+  : map f μ s = μ (f ⁻¹' s) := map_apply hfm.fmeas hms.meas
+
 def indep_sets_iff {α} [measurable_space α] (s1 s2 : set (set α))
   (μ : measure α . volume_tac) [is_probability_measure μ]
   (hs1 : s1 ⊆ measurable_set) (hs2 : s2 ⊆ measurable_set) :
@@ -42,6 +48,27 @@ begin
   refine (indep_set_iff_measure_inter_eq_mul (hs1 _) (hs2 _) μ).symm;
   assumption
 end
+
+instance fmeas_pi_of {α : Type*} {δ : Type*} {π : δ → Type*}
+  [measurable_space α] [Π (a : δ), measurable_space (π a)]
+  {g : α → Π (a : δ), π a} [hmg : fmeas g] (a : δ) :
+  fmeas (λ (x : α), g x a) := ⟨measurable_pi_iff.mp hmg.fmeas a⟩
+
+instance fmeas_pi_from {α : Type*} {δ : Type*} {π : δ → Type*}
+  [measurable_space α] [Π (a : δ), measurable_space (π a)]
+  {g : α → Π (a : δ), π a} [hmg : ∀ (a : δ), fmeas (λ (x : α), g x a)] :
+  fmeas g  := ⟨measurable_pi_iff.mpr (λ a, (hmg a).fmeas)⟩
+
+instance fmeas_pi_subtype {δ : Type*} {π : δ → Type*}
+  [hmp : Π a, measurable_space (π a)] (s : set δ) :
+  fmeas (@pi_subtype δ π s) := ⟨measurable_pi_subtype s⟩
+
+instance meas_preimage_of_fmeas_meas
+  {α : Type*} {β : Type*} [measurable_space α] [measurable_space β]
+  {f : α → β} [hfm : fmeas f] (s : set β) [hms : meas s] :
+  meas (f ⁻¹' s) := ⟨fmeas.fmeas hms.meas⟩
+
+------------
 
 variables {α : Type*} [m : measurable_space α] (μ : measure α) {ι: Type*}
   {β : ι → Type*} [hmsb : (Π i : ι, measurable_space (β i))] (f : Π i : ι, α → (β i))
@@ -70,22 +97,20 @@ end definitions
 
 section marginal
 
-variable (hm : ∀ i : ι, measurable (f i))
+variable [hm : ∀ i : ι, fmeas (f i)]
 include hm
 
 lemma marginal_eq_marginalization_aux (mv : set ι) :
   marginal μ f mv = marginalization (joint μ f) mv :=
-by rw [marginalization, joint, map_map _ (measurable_pi_iff.mpr hm), function.comp];
-  try {refl}; exact measurable_pi_subtype _
+by rw [marginalization, joint, map_map', function.comp]; refl
 
 /-- The marginalization principle: the marginal probability of a particular 
 "marginal assignment" measurable set `s` is equal to the joint probability of
 that same set, extended to allow the unassigned variables to take any value. -/
 theorem marginal_def (mv : set ι) 
-  (s : set (Π i : mv, β i)) (hms : measurable_set s) :
+  (s : set (Π i : mv, β i)) [hms : meas s] :
   marginal μ f mv s = joint μ f ((pi_subtype mv) ⁻¹' s) :=
-by rw [marginal_eq_marginalization_aux _ _ hm, marginalization, map_apply _ hms];
-  exact measurable_pi_subtype _
+by rw [marginal_eq_marginalization_aux, marginalization, map_apply' s]; apply_instance
 
 end marginal
 
@@ -123,24 +148,21 @@ def cond (A B : set ι) (c : set (Π i : B, β i)) : measure (Π i : A, β i) :=
 
 end definitions
 
-theorem cond_def [is_probability_measure μ] (hm : ∀ i : ι, measurable (f i)) (A B : set ι)
-  (c : set (Π i : B, β i)) (hmc : measurable_set c)
-  (s : set (Π i : A, β i)) (hms : measurable_set s) :
+theorem cond_def [is_probability_measure μ] [hm : ∀ i : ι, fmeas (f i)] (A B : set ι)
+  (c : set (Π i : B, β i)) [hmc : meas c]
+  (s : set (Π i : A, β i)) [hms : meas s] :
   cond μ f A B c s = cond_measure (joint μ f) (pi_subtype B ⁻¹' c) (pi_subtype A ⁻¹' s) :=
 begin
-  rw [cond, marginal_def _ _ hm _ _ hms],
+  rw [cond, marginal_def],
   have : joint (cond_measure μ ((λ a i, f i a) ⁻¹' (pi_subtype B ⁻¹' c))) f
     = cond_measure (joint μ f) (pi_subtype B ⁻¹' c),
   { apply measure.ext,
     intros s' hms',
-    rw [joint, map_apply (measurable_pi_iff.mpr hm) hms'],
-    haveI : meas (pi_subtype B ⁻¹' c) := ⟨(measurable_pi_subtype B) hmc⟩,
-    haveI : meas ((λ a i, f i a) ⁻¹' (pi_subtype B ⁻¹' c)) := ⟨(measurable_pi_iff.mpr hm) ((measurable_pi_subtype B) hmc)⟩,
-    simp_rw cond_measure_def,
-    simp_rw [joint],
-    rw [map_apply (measurable_pi_iff.mpr hm) _, map_apply (measurable_pi_iff.mpr hm) _, set.preimage_inter],
-    sorry,
-    sorry },
+    haveI := meas.mk hms',
+    rw [joint, map_apply' s'],
+    simp_rw [cond_measure_def, joint],
+    rw [map_apply', map_apply', set.preimage_inter],
+    apply_instance },
   rw this
 end
 
@@ -151,7 +173,8 @@ lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
 lemma comap_subtype_subset (A : set ι) :
   {x | (@comap_subtype _ β _ A).measurable_set' x} ⊆ measurable_set := sorry
 
-theorem independent_iff_cond_irrel (hm : ∀ i : ι, measurable (f i)) [is_probability_measure μ] (A B : set ι) :
+theorem independent_iff_cond_irrel [hm : ∀ i : ι, fmeas (f i)] [is_probability_measure μ]
+  (A B : set ι) :
   independent μ f A B ↔ ∀ (c : set (Π i : B, β i)), cond_meas (marginal μ f B) c
   → cond μ f A B c = marginal μ f A :=
 begin
@@ -168,21 +191,22 @@ begin
     split;
     intro h,
     { intros c hcmc s hms,
-      rw [cond_def _ _ hm _ _ _ hcmc.meas _ hms, marginal_def _ _ hm _ _ hms]; try {assumption},
-      haveI : meas (pi_subtype A ⁻¹' s) := sorry,
-      haveI : meas (pi_subtype B ⁻¹' c) := sorry,
+      haveI := meas.mk hms,
+      rw [cond_def, marginal_def], 
       refine (indep_set_iff_cond_irrel _ _ _).mp _ _,
       exact indep_sets.symm (h _ hms _ hcmc.meas),
       sorry },
     { intros s hms c hmc,
+      haveI := meas.mk hms,
+      haveI := meas.mk hmc,
       rw (indep_set_iff_cond_irrel' _ _ _),
       intro hcms,
       have := h c (sorry) s hms,
-      rw [cond_def _ _ hm _ _ _ hmc _ hms, marginal_def _ _ hm _ _ hms] at this; try {assumption},
-      sorry,
-      sorry,
-      sorry }
-  },
+      rw [cond_def, marginal_def] at this,
+      assumption,
+      apply_instance,
+      apply_instance,
+      apply_instance } },
   exact comap_subtype_subset _,
   exact comap_subtype_subset _
 end

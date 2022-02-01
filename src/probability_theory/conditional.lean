@@ -51,6 +51,10 @@ section definitions
 class meas (s : set α) : Prop :=
 (meas : m.measurable_set' s)
 
+/-- Type class wrapper for measurable functions. -/
+class fmeas [measurable_space α] {β : Type*} [measurable_space β] (f : α → β) : Prop :=
+(fmeas : measurable f)
+
 include μ
 
 /-- Represents the notion that a conditional probability measure "exists" for a measure `μ`
