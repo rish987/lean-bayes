@@ -185,6 +185,14 @@ begin
     simp [measure_inter_null_of_null_left, hz] }
 end
 
+lemma symm_iff {α} {s₁ s₂ : set (set α)} [measurable_space α] {μ : measure α} :
+  indep_sets s₁ s₂ μ ↔ indep_sets s₂ s₁ μ :=
+⟨indep_sets.symm, indep_sets.symm⟩
+
+theorem indep_set_iff_cond_irrel' [hma : meas a] (b : set α) [hmb : meas b] :
+  indep_set b a μ ↔ cond_meas μ a → μ[b|a] = μ b :=
+iff.trans symm_iff (indep_set_iff_cond_irrel _ _ _)
+
 def cond_Indep_sets {α ι} [measurable_space α] (π : ι → set (set α))
   (C : set (set α)) (μ : measure α . volume_tac) : Prop :=
 ∀ (c ∈ C), Indep_sets π (μ[|c])
