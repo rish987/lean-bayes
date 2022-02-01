@@ -93,7 +93,7 @@ section bayes
 variables (a : set α)
 
 /-- The axiomatic definition of conditional probability derived from a measure-theoretic one. -/
-@[simp] lemma cond_def [hma : meas a] (b : set α) :
+@[simp] lemma cond_measure_def [hma : meas a] (b : set α) :
   μ[b|a] = (μ a)⁻¹ * μ (a ∩ b) :=
 by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
 
@@ -116,7 +116,7 @@ instance cond_cond_meas_of_cond_meas_inter {s t : set α} [cond_meas μ s]
   cond_meas (μ[|s]) t :=
 begin
   constructor,
-  rw cond_def,
+  rw cond_measure_def,
   refine mul_ne_zero _ _,
   exact ennreal.inv_ne_zero.mpr (measure_ne_top _ _),
   exact hcmi.meas_nz
@@ -152,13 +152,13 @@ end
 
 @[simp] lemma cond_inter [hcma : cond_meas μ a] (b : set α) :
   μ[b|a] * μ a = μ (a ∩ b) :=
-by rw [cond_def μ a b, mul_comm, ←mul_assoc,
+by rw [cond_measure_def μ a b, mul_comm, ←mul_assoc,
   ennreal.mul_inv_cancel hcma.meas_nz (measure_ne_top _ a), one_mul]
 
 /-- Bayes' Theorem. -/
 theorem bayes [cond_meas μ a] (b : set α) [cond_meas μ b] :
   μ[b|a] = (μ a)⁻¹ * μ[a|b] * (μ b) :=
-by rw [mul_assoc, cond_inter μ b a, set.inter_comm, cond_def]
+by rw [mul_assoc, cond_inter μ b a, set.inter_comm, cond_measure_def]
 
 section indep
 
@@ -170,7 +170,7 @@ begin
   split,
     intros hind hcma, 
     haveI := hcma,
-    rw [cond_def, (indep_set_iff_measure_inter_eq_mul hma.meas hmb.meas μ).mp hind,
+    rw [cond_measure_def, (indep_set_iff_measure_inter_eq_mul hma.meas hmb.meas μ).mp hind,
       ← mul_assoc, ennreal.inv_mul_cancel hcma.meas_nz (measure_ne_top _ _), one_mul],
   intro hcondi, 
   by_cases hcma : cond_meas μ a,
@@ -258,10 +258,10 @@ theorem cond_meas_inter [meas a] (b : set α) [meas b]
   : cond_meas μ (b ∩ a) ↔ cond_meas (μ[|b]) a :=
 begin
   split; intro hcm; constructor,
-    rw cond_def,
+    rw cond_measure_def,
     simp [hcm.meas_nz, measure_ne_top],
   have := hcm.meas_nz,
-  simp [cond_def, not_or_distrib] at this,
+  simp [cond_measure_def, not_or_distrib] at this,
   exact this.2
 end
 
