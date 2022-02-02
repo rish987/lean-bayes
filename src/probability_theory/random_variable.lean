@@ -71,9 +71,7 @@ instance meas_preimage_of_fmeas_meas
 ------------
 
 variables {α : Type*} [m : measurable_space α] (μ : measure α) {ι: Type*}
-  {β : ι → Type*} [hmsb : (Π i : ι, measurable_space (β i))] (f : Π i : ι, α → (β i))
-
-include hmsb
+  {β : ι → Type*} [(Π i : ι, measurable_space (β i))] (f : Π i : ι, α → (β i))
 
 section definitions
 
@@ -112,6 +110,14 @@ theorem marginal_def (mv : set ι)
   marginal μ f mv s = joint μ f ((pi_subtype mv) ⁻¹' s) :=
 by rw [marginal_eq_marginalization_aux, marginalization, map_apply' s]; apply_instance
 
+instance joint_cond_meas_of_marginal (mv : set ι) 
+  (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (marginal μ f mv) s]
+  : cond_meas (joint μ f) (pi_subtype mv ⁻¹' s) := sorry
+
+instance marginal_cond_meas_of_joint (mv : set ι) 
+  (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (joint μ f) (pi_subtype mv ⁻¹' s)]
+  : cond_meas (marginal μ f mv) s := sorry
+
 end marginal
 
 -----
@@ -148,9 +154,9 @@ def cond (A B : set ι) (c : set (Π i : B, β i)) : measure (Π i : A, β i) :=
 
 end definitions
 
-theorem cond_def [is_probability_measure μ] [hm : ∀ i : ι, fmeas (f i)] (A B : set ι)
-  (c : set (Π i : B, β i)) [hmc : meas c]
-  (s : set (Π i : A, β i)) [hms : meas s] :
+theorem cond_def [is_probability_measure μ] [∀ i : ι, fmeas (f i)] (A B : set ι)
+  (c : set (Π i : B, β i)) [meas c]
+  (s : set (Π i : A, β i)) [meas s] :
   cond μ f A B c s = cond_measure (joint μ f) (pi_subtype B ⁻¹' c) (pi_subtype A ⁻¹' s) :=
 begin
   rw [cond, marginal_def],
@@ -173,7 +179,7 @@ lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
 lemma comap_subtype_subset (A : set ι) :
   {x | (@comap_subtype _ β _ A).measurable_set' x} ⊆ measurable_set := sorry
 
-theorem independent_iff_cond_irrel [hm : ∀ i : ι, fmeas (f i)] [is_probability_measure μ]
+theorem independent_iff_cond_irrel [∀ i : ι, fmeas (f i)] [is_probability_measure μ]
   (A B : set ι) :
   independent μ f A B ↔ ∀ (c : set (Π i : B, β i)), cond_meas (marginal μ f B) c
   → cond μ f A B c = marginal μ f A :=
@@ -193,20 +199,16 @@ begin
     { intros c hcmc s hms,
       haveI := meas.mk hms,
       rw [cond_def, marginal_def], 
-      refine (indep_set_iff_cond_irrel _ _ _).mp _ _,
-      exact indep_sets.symm (h _ hms _ hcmc.meas),
-      sorry },
+      refine (indep_set_iff_cond_irrel _ _ _).mp
+        (indep_sets.symm (h _ hms _ hcmc.meas)) infer_instance, },
     { intros s hms c hmc,
       haveI := meas.mk hms,
       haveI := meas.mk hmc,
-      rw (indep_set_iff_cond_irrel' _ _ _),
+      rw indep_set_iff_cond_irrel',
       intro hcms,
-      have := h c (sorry) s hms,
-      rw [cond_def, marginal_def] at this,
-      assumption,
-      apply_instance,
-      apply_instance,
-      apply_instance } },
+      haveI := hcms,
+      have := h c infer_instance s hms,
+      rwa [cond_def, marginal_def] at this } },
   exact comap_subtype_subset _,
   exact comap_subtype_subset _
 end
