@@ -5,6 +5,28 @@ import probability_theory.conditional
 -- TODO subtype.restrict?
 def pi_subtype {α : Type*} {β : α → Type*} (mv : set α) := λ (g : Π i, β i) (i : mv), g i
 
+@[reducible]
+def pi_subtype_img {α : Type*} {β : α → Type*} (mv : set α) :=
+  λ (g : set (Π i, β i)) , pi_subtype mv '' g
+
+@[reducible]
+def pi_unsubtype_img {α : Type*} {β : α → Type*} (mv : set α) :=
+  λ (g : set (Π i : mv, β i)), pi_subtype mv ⁻¹' g
+
+notation  `<[`S`]` := pi_subtype_img S
+notation  `>[`S`]` := pi_unsubtype_img S
+
+@[reducible]
+def pi_unsubtype_union_img₁ {α : Type*} {β : α → Type*} (A : set α) (B : set α) : set (Π i : A, β i) → set (Π i : A ∪ B, β i) :=
+  λ (g : set (Π i : A, β i)), <[A ∪ B] (>[A] g)
+
+@[reducible]
+def pi_unsubtype_union_img₂ {α : Type*} {β : α → Type*} (A : set α) (B : set α) : set (Π i : B, β i) → set (Π i : A ∪ B, β i) :=
+  λ (g : set (Π i : B, β i)), <[A ∪ B] (>[B] g)
+
+notation  `>₁[`A`,`B`]` := pi_unsubtype_union_img₁ A B
+notation  `>₂[`A`,`B`]` := pi_unsubtype_union_img₂ A B
+
 -- TODO change definition of `indep_sets` so this isn't needed
 lemma ball_mem_comm' {α β} [has_mem α β] {s t : β} {p : α → α → Prop} :
   (∀ a ∈ s, ∀ b ∈ t, p a b) ↔ (∀ a b, a ∈ s → b ∈ t → p a b) := by tauto
@@ -60,7 +82,7 @@ instance fmeas_pi_from {α : Type*} {δ : Type*} {π : δ → Type*}
   fmeas g  := ⟨measurable_pi_iff.mpr (λ a, (hmg a).fmeas)⟩
 
 instance fmeas_pi_subtype {δ : Type*} {π : δ → Type*}
-  [hmp : Π a, measurable_space (π a)] (s : set δ) :
+  [Π a, measurable_space (π a)] (s : set δ) :
   fmeas (@pi_subtype δ π s) := ⟨measurable_pi_subtype s⟩
 
 instance meas_preimage_of_fmeas_meas
@@ -106,16 +128,17 @@ by rw [marginalization, joint, map_map', function.comp]; refl
 "marginal assignment" measurable set `s` is equal to the joint probability of
 that same set, extended to allow the unassigned variables to take any value. -/
 theorem marginal_def (mv : set ι) 
-  (s : set (Π i : mv, β i)) [hms : meas s] :
-  marginal μ f mv s = joint μ f ((pi_subtype mv) ⁻¹' s) :=
-by rw [marginal_eq_marginalization_aux, marginalization, map_apply' s]; apply_instance
+  (s : set (Π i : mv, β i)) [meas s] :
+  marginal μ f mv s = joint μ f (>[mv] s) :=
+by rw [marginal_eq_marginalization_aux, marginalization, map_apply' s];
+  apply_instance
 
 instance joint_cond_meas_of_marginal (mv : set ι) 
   (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (marginal μ f mv) s]
-  : cond_meas (joint μ f) (pi_subtype mv ⁻¹' s) := sorry
+  : cond_meas (joint μ f) (>[mv] s) := sorry
 
 instance marginal_cond_meas_of_joint (mv : set ι) 
-  (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (joint μ f) (pi_subtype mv ⁻¹' s)]
+  (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (joint μ f) (>[mv] s)]
   : cond_meas (marginal μ f mv) s := sorry
 
 end marginal
@@ -150,31 +173,36 @@ section conditional
 section definitions
 
 def cond (A B : set ι) (c : set (Π i : B, β i)) : measure (Π i : A, β i) := 
-  marginal (cond_measure μ ((λ a i, f i a) ⁻¹' ((pi_subtype B) ⁻¹' c))) f A
+  marginal (cond_measure μ ((λ a i, f i a) ⁻¹' (>[B] c))) f A
+
+/-- Two sets of random variables `A` and `B` are independent given a third set `C`
+if the measurable spaces `A` and `B` incur on the joint distribution are independent
+given any measurable set incurred by `C`. -/
+def cond_independent (A B C : set ι) : Prop :=
+  cond_indep (comap_subtype A) (comap_subtype B) (comap_subtype C).measurable_set' (joint μ f)
 
 end definitions
 
 theorem cond_def [is_probability_measure μ] [∀ i : ι, fmeas (f i)] (A B : set ι)
   (c : set (Π i : B, β i)) [meas c]
   (s : set (Π i : A, β i)) [meas s] :
-  cond μ f A B c s = cond_measure (joint μ f) (pi_subtype B ⁻¹' c) (pi_subtype A ⁻¹' s) :=
+  cond μ f A B c s = cond_measure (joint μ f) (>[B] c) (>[A] s) :=
 begin
   rw [cond, marginal_def],
-  have : joint (cond_measure μ ((λ a i, f i a) ⁻¹' (pi_subtype B ⁻¹' c))) f
-    = cond_measure (joint μ f) (pi_subtype B ⁻¹' c),
+  have : joint (cond_measure μ ((λ a i, f i a) ⁻¹' (>[B] c))) f
+    = cond_measure (joint μ f) (>[B] c),
   { apply measure.ext,
     intros s' hms',
     haveI := meas.mk hms',
-    rw [joint, map_apply' s'],
+    rw [joint, map_apply'],
     simp_rw [cond_measure_def, joint],
-    rw [map_apply', map_apply', set.preimage_inter],
-    apply_instance },
+    rw [map_apply', map_apply', set.preimage_inter] },
   rw this
 end
 
 lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
   (∀ x, (comap_subtype A).measurable_set' x → P x)
-  ↔ (∀ x, measurable_set x → P (pi_subtype A ⁻¹' x)) := set.maps_image_to _ _ _ _
+  ↔ (∀ x, measurable_set x → P (>[A] x)) := set.maps_image_to _ _ _ _
 
 lemma comap_subtype_subset (A : set ι) :
   {x | (@comap_subtype _ β _ A).measurable_set' x} ⊆ measurable_set := sorry
@@ -193,7 +221,7 @@ begin
       ↔ ∀ (c : set (Π (i : ↥B), β ↑i)), cond_meas (marginal μ f B) c 
       → cond μ f A B c = marginal μ f A,
     simp_rw comap_subtype_ext,
-    conv in (cond _ _ _ _ _ = marginal _ _ _) { rw (propext measure.ext_iff) },
+    conv in (cond _ _ _ _ _ = marginal _ _ _) { rw measure.ext_iff },
     split;
     intro h,
     { intros c hcmc s hms,
@@ -212,6 +240,12 @@ begin
   exact comap_subtype_subset _,
   exact comap_subtype_subset _
 end
+
+theorem cond_independent_iff_cond_inter_irrel [∀ i : ι, fmeas (f i)] [is_probability_measure μ]
+  (A B C : set ι) :
+  cond_independent μ f A B C ↔ ∀ (b : set (Π i : B, β i)) (c : set (Π i : C, β i)),
+  cond_meas (marginal μ f (B ∪ C)) (pi_subtype B ⁻¹' b ∩ pi_subtype C ⁻¹' c)
+  → cond μ f A B c = marginal μ f A := sorry
 
 end conditional
 
