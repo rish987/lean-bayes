@@ -43,13 +43,13 @@ namespace probability_theory
 
 section
 
-variables {α : Type*} [m : measurable_space α] (μ : measure α)
+variables {α : Type*} [measurable_space α] (μ : measure α)
 
 section definitions
 
 /-- Type class wrapper for measurable sets. -/
 class meas (s : set α) : Prop :=
-(meas : m.measurable_set' s)
+(meas : measurable_set s)
 
 /-- Type class wrapper for measurable functions. -/
 class fmeas [measurable_space α] {β : Type*} [measurable_space β] (f : α → β) : Prop :=
@@ -70,7 +70,7 @@ def cond_measure (s : set α) : measure α :=
 end definitions
 
 -- TODO can this theorem be inferred automatically somehow?
-lemma cond_meas_iff (s : set α) : cond_meas μ s ↔ μ s ≠ 0 ∧ m.measurable_set' s :=
+lemma cond_meas_iff (s : set α) : cond_meas μ s ↔ μ s ≠ 0 ∧ measurable_set s :=
 begin
   split,
     intro hcms,
@@ -94,10 +94,8 @@ variable [is_probability_measure μ]
 
 section bayes
 
-variables (a : set α)
-
 /-- The axiomatic definition of conditional probability derived from a measure-theoretic one. -/
-@[simp] lemma cond_measure_def [hma : meas a] (b : set α) :
+@[simp] lemma cond_measure_def (a : set α) [hma : meas a] (b : set α) :
   μ[b|a] = (μ a)⁻¹ * μ (a ∩ b) :=
 by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
 
@@ -141,7 +139,7 @@ end
 
 /-- Conditioning first on `a` and then on `b` results in the same measure as conditioning
 on `a ∩ b`. -/
-@[simp] lemma cond_cond_eq_cond_inter (b : set α) [hcma : cond_meas μ a]
+@[simp] lemma cond_cond_eq_cond_inter (a : set α) (b : set α) [hcma : cond_meas μ a]
   [cond_meas (μ[|a]) b] [hcmr : cond_meas μ (a ∩ b)] :
   μ[|a][|b] = (μ[|(a ∩ b)]) :=
 begin
@@ -154,13 +152,13 @@ begin
     ← set.inter_assoc, mul_comm]
 end
 
-@[simp] lemma cond_inter [hcma : cond_meas μ a] (b : set α) :
+@[simp] lemma cond_inter (a : set α) [hcma : cond_meas μ a] (b : set α) :
   μ[b|a] * μ a = μ (a ∩ b) :=
 by rw [cond_measure_def μ a b, mul_comm, ←mul_assoc,
   ennreal.mul_inv_cancel hcma.meas_nz (measure_ne_top _ a), one_mul]
 
 /-- Bayes' Theorem. -/
-theorem bayes [cond_meas μ a] (b : set α) [cond_meas μ b] :
+theorem bayes (a : set α) [cond_meas μ a] (b : set α) [cond_meas μ b] :
   μ[b|a] = (μ a)⁻¹ * μ[a|b] * (μ b) :=
 by rw [mul_assoc, cond_inter μ b a, set.inter_comm, cond_measure_def]
 
@@ -168,7 +166,7 @@ section indep
 
 /-- Two measurable sets are independent if and only if conditioning on one
 is irrelevant to the probability of the other. -/
-theorem indep_set_iff_cond_irrel [hma : meas a] (b : set α) [hmb : meas b] :
+theorem indep_set_iff_cond_irrel (a : set α) [hma : meas a] (b : set α) [hmb : meas b] :
   indep_set a b μ ↔ cond_meas μ a → μ[b|a] = μ b :=
 begin
   split,
@@ -193,7 +191,7 @@ lemma symm_iff {α} {s₁ s₂ : set (set α)} [measurable_space α] {μ : measu
   indep_sets s₁ s₂ μ ↔ indep_sets s₂ s₁ μ :=
 ⟨indep_sets.symm, indep_sets.symm⟩
 
-theorem indep_set_iff_cond_irrel' [meas a] (b : set α) [meas b] :
+theorem indep_set_iff_cond_irrel' (a : set α) [meas a] (b : set α) [meas b] :
   indep_set b a μ ↔ cond_meas μ a → μ[b|a] = μ b :=
 iff.trans symm_iff (indep_set_iff_cond_irrel _ _ _)
 
@@ -273,7 +271,7 @@ def cond_indep_fun_def {α ι} [measurable_space α] {β : ι → Type*}
   (f : Π (x : ι), α → β x) (C : set (set α)) (μ : measure α . volume_tac) :
   cond_Indep_fun m f C μ = ∀ c ∈ C, Indep_fun m f (μ[|c]) := rfl
 
-theorem cond_meas_inter [meas a] (b : set α) [meas b]
+theorem cond_meas_inter (a : set α) [meas a] (b : set α) [meas b]
   : cond_meas μ (b ∩ a) ↔ cond_meas (μ[|b]) a :=
 begin
   split; intro hcm; constructor,
@@ -284,9 +282,9 @@ begin
   exact this.2
 end
 
-theorem cond_indep_set_iff_cond_inter_irrel [meas a]
-  (b : set α) [meas b]
-  (c : set α) [meas c] :
+def cond_indep_set_iff_cond_inter_irrel (a : set α) [hma : meas a]
+  (b : set α) [hmb : meas b]
+  (c : set α) [hmc : meas c] :
   cond_indep_set' a b c μ ↔ cond_meas μ (c ∩ a) → μ[b|c ∩ a] = μ[b|c] :=
 begin
   have : cond_meas μ (c ∩ a) → (μ[b|c ∩ a] = μ[b|c] ↔ (μ[|c][|a]) b = μ[b|c]),
@@ -294,14 +292,27 @@ begin
   by_cases h : cond_meas μ c,
     haveI := h,
     rw [cond_indep_set_def', forall_congr this, cond_meas_inter, indep_set_iff_cond_irrel],
-  sorry
+  have hz : μ c = 0,
+  -- TODO make a lemma for this
+  {  simp [cond_meas_iff] at h,
+       exact not_imp_not.mp h hmc.meas },
+  have inter_z : ∀ x, μ (c ∩ x) = 0 := sorry,
+  rw [cond_indep_set_def', indep_set, indep, indep_sets],
+  refine iff_of_true _ _,
+  { intros s t hgs hgt,
+    simp_rw cond_measure_def,
+    simp [inter_z] },
+  { refine not.elim _,
+    simp [cond_meas_iff],
+    intro,
+    have := inter_z a,
+    contradiction }
 end
 
-theorem cond_indep_set_iff_cond_inter_irrel' [meas a]
+theorem cond_indep_set_iff_cond_inter_irrel' (a : set α) [meas a]
   (b : set α) [meas b]
   (c : set α) [meas c]
-  :
-  cond_indep_set' b a c μ ↔ cond_meas μ (c ∩ a) → μ[b|c ∩ a] = μ[b|c] :=
+  : cond_indep_set' b a c μ ↔ cond_meas μ (c ∩ a) → μ[b|c ∩ a] = μ[b|c] :=
 iff.trans cond_indep_set'.symm_iff (cond_indep_set_iff_cond_inter_irrel _ _ _ _)
 
 end indep
