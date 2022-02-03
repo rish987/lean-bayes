@@ -193,7 +193,7 @@ lemma symm_iff {α} {s₁ s₂ : set (set α)} [measurable_space α] {μ : measu
   indep_sets s₁ s₂ μ ↔ indep_sets s₂ s₁ μ :=
 ⟨indep_sets.symm, indep_sets.symm⟩
 
-theorem indep_set_iff_cond_irrel' [hma : meas a] (b : set α) [hmb : meas b] :
+theorem indep_set_iff_cond_irrel' [meas a] (b : set α) [meas b] :
   indep_set b a μ ↔ cond_meas μ a → μ[b|a] = μ b :=
 iff.trans symm_iff (indep_set_iff_cond_irrel _ _ _)
 
@@ -235,6 +235,13 @@ cond_indep (generate_from {s}) (generate_from {t}) C μ
 def cond_indep_set' {α} [measurable_space α] (s t : set α) (c : set α)
   (μ : measure α . volume_tac) : Prop :=
 cond_indep_set s t {c} μ
+
+lemma cond_indep_set'.symm {α} {s t c : set α} [measurable_space α] {μ : measure α}
+  (h : cond_indep_set' s t c μ) : cond_indep_set' t s c μ := sorry
+
+lemma cond_indep_set'.symm_iff {α} {s t c : set α} [measurable_space α] {μ : measure α} :
+  cond_indep_set' s t c μ ↔ cond_indep_set' t s c μ :=
+⟨cond_indep_set'.symm, cond_indep_set'.symm⟩
 
 def cond_indep_set_def {α} [measurable_space α] (s t : set α) (C : set (set α))
   (μ : measure α . volume_tac) :
@@ -279,13 +286,23 @@ end
 
 theorem cond_indep_set_iff_cond_inter_irrel [meas a]
   (b : set α) [meas b]
-  (c : set α) [cond_meas μ c] :
+  (c : set α) [meas c] :
   cond_indep_set' a b c μ ↔ cond_meas μ (c ∩ a) → μ[b|c ∩ a] = μ[b|c] :=
 begin
   have : cond_meas μ (c ∩ a) → (μ[b|c ∩ a] = μ[b|c] ↔ (μ[|c][|a]) b = μ[b|c]),
   { intro h, haveI := h, rw ← cond_cond_eq_cond_inter },
-  rw [cond_indep_set_def', forall_congr this, cond_meas_inter, indep_set_iff_cond_irrel],
+  by_cases h : cond_meas μ c,
+    haveI := h,
+    rw [cond_indep_set_def', forall_congr this, cond_meas_inter, indep_set_iff_cond_irrel],
+  sorry
 end
+
+theorem cond_indep_set_iff_cond_inter_irrel' [meas a]
+  (b : set α) [meas b]
+  (c : set α) [meas c]
+  :
+  cond_indep_set' b a c μ ↔ cond_meas μ (c ∩ a) → μ[b|c ∩ a] = μ[b|c] :=
+iff.trans cond_indep_set'.symm_iff (cond_indep_set_iff_cond_inter_irrel _ _ _ _)
 
 end indep
 

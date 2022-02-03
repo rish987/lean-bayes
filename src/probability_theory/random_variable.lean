@@ -16,16 +16,22 @@ def pi_unsubtype_img {α : Type*} {β : α → Type*} (mv : set α) :=
 notation  `<[`S`]` := pi_subtype_img S
 notation  `>[`S`]` := pi_unsubtype_img S
 
+notation  `<[]` := pi_subtype_img _
+notation  `>[]` := pi_unsubtype_img _
+
 @[reducible]
 def pi_unsubtype_union_img₁ {α : Type*} {β : α → Type*} (A : set α) (B : set α) : set (Π i : A, β i) → set (Π i : A ∪ B, β i) :=
-  λ (g : set (Π i : A, β i)), <[A ∪ B] (>[A] g)
+  λ g, <[A ∪ B] (>[A] g)
 
 @[reducible]
 def pi_unsubtype_union_img₂ {α : Type*} {β : α → Type*} (A : set α) (B : set α) : set (Π i : B, β i) → set (Π i : A ∪ B, β i) :=
-  λ (g : set (Π i : B, β i)), <[A ∪ B] (>[B] g)
+  λ g, <[A ∪ B] (>[B] g)
 
 notation  `>₁[`A`,`B`]` := pi_unsubtype_union_img₁ A B
 notation  `>₂[`A`,`B`]` := pi_unsubtype_union_img₂ A B
+
+notation  `>₁[]` := pi_unsubtype_union_img₁ _ _
+notation  `>₂[]` := pi_unsubtype_union_img₂ _ _
 
 -- TODO change definition of `indep_sets` so this isn't needed
 lemma ball_mem_comm' {α β} [has_mem α β] {s t : β} {p : α → α → Prop} :
@@ -60,16 +66,27 @@ lemma map_apply' {α : Type*} {β : Type*} [measurable_space α] [measurable_spa
   {μ : measure α} {f : α → β} [hfm : fmeas f] (s : set β) [hms : meas s]
   : map f μ s = μ (f ⁻¹' s) := map_apply hfm.fmeas hms.meas
 
+@[reducible]
+def indep_sets' {α} [measurable_space α] {s1 s2 : set (set α)} (μ : measure α) :=
+  ∀ (t1 ∈ s1) (t2 ∈ s2), μ (t1 ∩ t2) = μ (t1) * μ (t2)
+
+lemma indep_sets_eq : @indep_sets = @indep_sets' := by ext; split; exact λ a b c d e, a b d c e
+
 def indep_sets_iff {α} [measurable_space α] (s1 s2 : set (set α))
   (μ : measure α . volume_tac) [is_probability_measure μ]
   (hs1 : s1 ⊆ measurable_set) (hs2 : s2 ⊆ measurable_set) :
-  indep_sets s1 s2 μ ↔ (∀ t1 t2 : set α, t1 ∈ s1 → t2 ∈ s2 → indep_set t1 t2 μ) :=
+  indep_sets s1 s2 μ ↔ (∀ (t1 ∈ s1) (t2 ∈ s2), indep_set t1 t2 μ) :=
 begin
-  rw indep_sets,
+  rw [indep_sets_eq],
   repeat {rw forall_congr, intro},
-  refine (indep_set_iff_measure_inter_eq_mul (hs1 _) (hs2 _) μ).symm;
+  refine (indep_set_iff_measure_inter_eq_mul (hs1 _) (hs2 _) μ);
   assumption
 end
+
+def cond_indep_sets_iff {α} [measurable_space α] (s1 s2 cs : set (set α))
+  (μ : measure α . volume_tac) [is_probability_measure μ]
+  (hs1 : s1 ⊆ measurable_set) (hs2 : s2 ⊆ measurable_set) (hcs : cs ⊆ measurable_set) :
+  cond_indep_sets s1 s2 cs μ ↔ (∀ (t1 ∈ s1) (t2 ∈ s2) (c ∈ cs), cond_indep_set' t1 t2 c μ) := sorry
 
 instance fmeas_pi_of {α : Type*} {δ : Type*} {π : δ → Type*}
   [measurable_space α] [Π (a : δ), measurable_space (π a)]
@@ -129,16 +146,16 @@ by rw [marginalization, joint, map_map', function.comp]; refl
 that same set, extended to allow the unassigned variables to take any value. -/
 theorem marginal_def (mv : set ι) 
   (s : set (Π i : mv, β i)) [meas s] :
-  marginal μ f mv s = joint μ f (>[mv] s) :=
+  marginal μ f mv s = joint μ f (>[] s) :=
 by rw [marginal_eq_marginalization_aux, marginalization, map_apply' s];
   apply_instance
 
 instance joint_cond_meas_of_marginal (mv : set ι) 
   (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (marginal μ f mv) s]
-  : cond_meas (joint μ f) (>[mv] s) := sorry
+  : cond_meas (joint μ f) (>[] s) := sorry
 
 instance marginal_cond_meas_of_joint (mv : set ι) 
-  (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (joint μ f) (>[mv] s)]
+  (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (joint μ f) (>[] s)]
   : cond_meas (marginal μ f mv) s := sorry
 
 end marginal
@@ -173,7 +190,7 @@ section conditional
 section definitions
 
 def cond (A B : set ι) (c : set (Π i : B, β i)) : measure (Π i : A, β i) := 
-  marginal (cond_measure μ ((λ a i, f i a) ⁻¹' (>[B] c))) f A
+  marginal (cond_measure μ ((λ a i, f i a) ⁻¹' (>[] c))) f A
 
 /-- Two sets of random variables `A` and `B` are independent given a third set `C`
 if the measurable spaces `A` and `B` incur on the joint distribution are independent
@@ -186,11 +203,11 @@ end definitions
 theorem cond_def [is_probability_measure μ] [∀ i : ι, fmeas (f i)] (A B : set ι)
   (c : set (Π i : B, β i)) [meas c]
   (s : set (Π i : A, β i)) [meas s] :
-  cond μ f A B c s = cond_measure (joint μ f) (>[B] c) (>[A] s) :=
+  cond μ f A B c s = cond_measure (joint μ f) (>[] c) (>[] s) :=
 begin
   rw [cond, marginal_def],
-  have : joint (cond_measure μ ((λ a i, f i a) ⁻¹' (>[B] c))) f
-    = cond_measure (joint μ f) (>[B] c),
+  have : joint (cond_measure μ ((λ a i, f i a) ⁻¹' (>[] c))) f
+    = cond_measure (joint μ f) (>[] c),
   { apply measure.ext,
     intros s' hms',
     haveI := meas.mk hms',
@@ -207,14 +224,65 @@ lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
 lemma comap_subtype_subset (A : set ι) :
   {x | (@comap_subtype _ β _ A).measurable_set' x} ⊆ measurable_set := sorry
 
+theorem cond_independent_iff_cond_inter_irrel [∀ i : ι, fmeas (f i)] [is_probability_measure μ]
+  (A B C : set ι) :
+  cond_independent μ f A B C ↔ ∀ (b : set (Π i : B, β i)) (c : set (Π i : C, β i)),
+  meas b → meas c → cond_meas (marginal μ f (B ∪ C)) (>₁[] b ∩ >₂[] c)
+  → cond μ f A (B ∪ C) (>₁[] b ∩ >₂[] c) = cond μ f A C c :=
+begin
+  rw [cond_independent, cond_indep, cond_indep_sets_iff],
+  { -- FIXME this is just to pattern-match, can I avoid this somehow?
+    change (
+        ∀ (a : set (Π (i : ι), β i)), (comap_subtype A).measurable_set' a
+      → ∀ (b : set (Π (i : ι), β i)), (comap_subtype B).measurable_set' b
+      → ∀ (c : set (Π (i : ι), β i)), (comap_subtype C).measurable_set' c
+      → cond_indep_set' a b c (joint μ f))
+      ↔ ∀ (b : set (Π (i : ↥B), β ↑i)) (c : set (Π (i : ↥C), β ↑i)), 
+      meas b → meas c →
+      cond_meas (marginal μ f (B ∪ C)) (>₁[] b ∩ >₂[] c)
+      → cond μ f A (B ∪ C) (>₁[] b ∩ >₂[] c) = cond μ f A C c,
+    simp_rw comap_subtype_ext,
+    conv in (cond _ _ _ _ _ = cond _ _ _ _ _) { rw measure.ext_iff },
+    split;
+    intro h,
+    { intros b c hmb hmc hcmbc a hma,
+      -- TODO can I make this more concise?
+      haveI := hcmbc,
+      haveI := hmb,
+      haveI := hmc,
+      haveI := meas.mk hma,
+      simp_rw [cond_def],
+      convert (cond_indep_set_iff_cond_inter_irrel (joint μ f) (>[] b) (>[] a) (>[] c)).mp
+        (cond_indep_set'.symm (h _ hma _ hmb.meas _ hmc.meas)) _,
+      sorry,
+      sorry
+    },
+    { intros a hma b hmb c hmc,
+      haveI := meas.mk hma,
+      haveI := meas.mk hmb,
+      haveI := meas.mk hmc,
+      rw cond_indep_set_iff_cond_inter_irrel',
+      intro hcmbc,
+      haveI := hcmbc,
+      haveI : meas (>₁[] b ∩ >₂[] c) := sorry,
+      have := h b c (meas.mk hmb) (meas.mk hmc) (sorry) a hma,
+      rw [cond_def, cond_def] at this,
+      have temp : (>[] (>₁[] b ∩ >₂[] c)) = (>[] c ∩ >[] b) := sorry,
+      rwa temp at this,
+    } },
+  exact comap_subtype_subset _,
+  exact comap_subtype_subset _,
+  exact comap_subtype_subset _
+end
+
+-- TODO prove this concisely using the above theorem when C = ∅
 theorem independent_iff_cond_irrel [∀ i : ι, fmeas (f i)] [is_probability_measure μ]
   (A B : set ι) :
   independent μ f A B ↔ ∀ (c : set (Π i : B, β i)), cond_meas (marginal μ f B) c
   → cond μ f A B c = marginal μ f A :=
 begin
   rw [independent, indep, indep_sets_iff],
-  { simp only [ball_mem_comm'.symm],
-    -- FIXME this is just to pattern-match, can I avoid this somehow?
+  { -- FIXME this is just to pattern-match, can I avoid this somehow?
     change (∀ (a : set (Π (i : ι), β i)), (comap_subtype A).measurable_set' a
       → ∀ (b : set (Π (i : ι), β i)), (comap_subtype B).measurable_set' b
       → indep_set a b (joint μ f))
@@ -227,8 +295,8 @@ begin
     { intros c hcmc s hms,
       haveI := meas.mk hms,
       rw [cond_def, marginal_def], 
-      refine (indep_set_iff_cond_irrel _ _ _).mp
-        (indep_sets.symm (h _ hms _ hcmc.meas)) infer_instance, },
+      exact (indep_set_iff_cond_irrel _ _ _).mp
+        (indep_sets.symm (h _ hms _ hcmc.meas)) infer_instance },
     { intros s hms c hmc,
       haveI := meas.mk hms,
       haveI := meas.mk hmc,
@@ -240,12 +308,6 @@ begin
   exact comap_subtype_subset _,
   exact comap_subtype_subset _
 end
-
-theorem cond_independent_iff_cond_inter_irrel [∀ i : ι, fmeas (f i)] [is_probability_measure μ]
-  (A B C : set ι) :
-  cond_independent μ f A B C ↔ ∀ (b : set (Π i : B, β i)) (c : set (Π i : C, β i)),
-  cond_meas (marginal μ f (B ∪ C)) (pi_subtype B ⁻¹' b ∩ pi_subtype C ⁻¹' c)
-  → cond μ f A B c = marginal μ f A := sorry
 
 end conditional
 
