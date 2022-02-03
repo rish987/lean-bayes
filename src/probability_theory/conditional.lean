@@ -80,6 +80,9 @@ begin
   exact ⟨hnz⟩
 end
 
+lemma not_cond_meas_zero {s : set α} [hms : meas s] (h : ¬cond_meas μ s) : μ s = 0 :=
+by simp [cond_meas_iff] at h; exact not_imp_not.mp h hms.meas
+
 localized "notation  μ `[` s `|` t `]` := cond_measure μ t s" in probability_theory
 localized "notation  μ `[|` t`]` := cond_measure μ t" in probability_theory
 
@@ -180,9 +183,7 @@ begin
     refine (indep_set_iff_measure_inter_eq_mul hma.meas hmb.meas μ).mpr _,
     rwa [ ennreal.inv_mul_eq_iff_eq_mul hcma.meas_nz (measure_ne_top _ _), set.inter_comm,
       ← measure.restrict_apply' hma.meas] },
-  { have hz : μ a = 0,
-    {  simp [cond_meas_iff] at hcma,
-       exact not_imp_not.mp hcma hma.meas },
+  { have hz := not_cond_meas_zero _ hcma,
     rw indep_set_iff_measure_inter_eq_mul hma.meas hmb.meas μ,
     simp [measure_inter_null_of_null_left, hz] }
 end
@@ -235,7 +236,8 @@ def cond_indep_set' {α} [measurable_space α] (s t : set α) (c : set α)
 cond_indep_set s t {c} μ
 
 lemma cond_indep_set'.symm {α} {s t c : set α} [measurable_space α] {μ : measure α}
-  (h : cond_indep_set' s t c μ) : cond_indep_set' t s c μ := sorry
+  (h : cond_indep_set' s t c μ) : cond_indep_set' t s c μ :=
+by { intros c hc a b ha hb, rw [set.inter_comm, mul_comm], exact h c hc b a hb ha }
 
 lemma cond_indep_set'.symm_iff {α} {s t c : set α} [measurable_space α] {μ : measure α} :
   cond_indep_set' s t c μ ↔ cond_indep_set' t s c μ :=
@@ -283,8 +285,7 @@ begin
 end
 
 def cond_indep_set_iff_cond_inter_irrel (a : set α) [hma : meas a]
-  (b : set α) [hmb : meas b]
-  (c : set α) [hmc : meas c] :
+  (b : set α) [hmb : meas b] (c : set α) [hmc : meas c] :
   cond_indep_set' a b c μ ↔ cond_meas μ (c ∩ a) → μ[b|c ∩ a] = μ[b|c] :=
 begin
   have : cond_meas μ (c ∩ a) → (μ[b|c ∩ a] = μ[b|c] ↔ (μ[|c][|a]) b = μ[b|c]),
@@ -292,16 +293,13 @@ begin
   by_cases h : cond_meas μ c,
     haveI := h,
     rw [cond_indep_set_def', forall_congr this, cond_meas_inter, indep_set_iff_cond_irrel],
-  have hz : μ c = 0,
-  -- TODO make a lemma for this
-  {  simp [cond_meas_iff] at h,
-       exact not_imp_not.mp h hmc.meas },
-  have inter_z : ∀ x, μ (c ∩ x) = 0 := sorry,
+  have hz := not_cond_meas_zero _ h,
+  have inter_z : ∀ x, μ (c ∩ x) = 0 :=
+    λ x, eq_bot_iff.mpr (le_trans (μ.mono (set.inter_subset_left c x)) hz.le),
   rw [cond_indep_set_def', indep_set, indep, indep_sets],
   refine iff_of_true _ _,
-  { intros s t hgs hgt,
-    simp_rw cond_measure_def,
-    simp [inter_z] },
+  { intros,
+    simp [cond_measure_def, inter_z] },
   { refine not.elim _,
     simp [cond_meas_iff],
     intro,

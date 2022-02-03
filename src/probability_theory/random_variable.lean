@@ -33,10 +33,6 @@ notation  `>₂[`A`,`B`]` := pi_unsubtype_union_img₂ A B
 notation  `>₁[]` := pi_unsubtype_union_img₁ _ _
 notation  `>₂[]` := pi_unsubtype_union_img₂ _ _
 
--- TODO change definition of `indep_sets` so this isn't needed
-lemma ball_mem_comm' {α β} [has_mem α β] {s t : β} {p : α → α → Prop} :
-  (∀ a ∈ s, ∀ b ∈ t, p a b) ↔ (∀ a b, a ∈ s → b ∈ t → p a b) := by tauto
-
 namespace measurable_space
 
 lemma measurable_pi_subtype {δ : Type*} {π : δ → Type*}
