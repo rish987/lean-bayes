@@ -2,6 +2,21 @@ import measure_theory.measure.measure_space
 import probability_theory.independence
 import probability_theory.conditional
 
+namespace set
+
+theorem image_inter_on' {α β} {f : α → β} {s t : set α}
+  (h : ∀ (x ∈ s \ t) (y ∈ t \ s), f x ≠ f y) :
+  f '' s ∩ f '' t = f '' (s ∩ t) :=
+begin
+  refine subset.antisymm _ (image_inter_subset _ _ _),
+  rintro _ ⟨⟨a, has, hab⟩, ⟨b, hbt, rfl⟩⟩,
+  by_cases hat : a ∈ t, { exact hab ▸ mem_image_of_mem f ⟨has, hat⟩ },
+  by_cases hbs : b ∈ s, { exact mem_image_of_mem f ⟨hbs, hbt⟩ },
+  exact absurd hab (h a ⟨has, hat⟩ b ⟨hbt, hbs⟩)
+end
+
+end set
+
 -- TODO subtype.restrict?
 def pi_subtype {α : Type*} {β : α → Type*} (mv : set α) := λ (g : Π i, β i) (i : mv), g i
 
@@ -20,18 +35,31 @@ notation  `<[]` := pi_subtype_img _
 notation  `>[]` := pi_unsubtype_img _
 
 @[reducible]
-def pi_unsubtype_union_img₁ {α : Type*} {β : α → Type*} (A : set α) (B : set α) : set (Π i : A, β i) → set (Π i : A ∪ B, β i) :=
-  λ g, <[A ∪ B] (>[A] g)
+def pi_unsubtype_union_img₁ {α : Type*} {β : α → Type*} (A : set α) (B : set α) :
+  set (Π i : A, β i) → set (Π i : A ∪ B, β i) := λ g, <[A ∪ B] (>[A] g)
 
 @[reducible]
-def pi_unsubtype_union_img₂ {α : Type*} {β : α → Type*} (A : set α) (B : set α) : set (Π i : B, β i) → set (Π i : A ∪ B, β i) :=
-  λ g, <[A ∪ B] (>[B] g)
+def pi_unsubtype_union_img₂ {α : Type*} {β : α → Type*} (A : set α) (B : set α) :
+  set (Π i : B, β i) → set (Π i : A ∪ B, β i) := λ g, <[A ∪ B] (>[B] g)
+
+lemma pi_subtype_ext {α : Type*} {β : α → Type*} {A : set α} {f g : Π i, β i} : pi_subtype A f = pi_subtype A g ↔ ∀ i ∈ A, f i = g i := sorry
 
 notation  `>₁[`A`,`B`]` := pi_unsubtype_union_img₁ A B
 notation  `>₂[`A`,`B`]` := pi_unsubtype_union_img₂ A B
 
 notation  `>₁[]` := pi_unsubtype_union_img₁ _ _
 notation  `>₂[]` := pi_unsubtype_union_img₂ _ _
+
+example {α : Type*} {β : α → Type*} (A : set α) (B : set α)
+  (a : set (Π i : A, β i)) (b : set (Π i : B, β i)) : >[] (>₁[] a ∩ >₂[] b) = >[] a ∩ >[] b :=
+begin
+  rw set.image_inter_on' _,
+  simp_rw pi_unsubtype_img,
+  simp_rw set.preimage_image_eq (>[] a ∩ >[] b) (sorry),
+  { rintro _ ⟨_, hx'⟩ _ ⟨hy, _⟩ heq,
+    have := pi_subtype_ext.mpr (λ i hi, pi_subtype_ext.mp heq i (or.inr hi)),
+    exact hx' (this.symm ▸ hy : pi_subtype B x ∈ b) },
+end
 
 namespace measurable_space
 
@@ -247,10 +275,18 @@ begin
       haveI := hmb,
       haveI := hmc,
       haveI := meas.mk hma,
+      -- FIXME why was this necessary?
+      haveI := meas.mk hcmbc.meas,
       simp_rw [cond_def],
       convert (cond_indep_set_iff_cond_inter_irrel (joint μ f) (>[] b) (>[] a) (>[] c)).mp
         (cond_indep_set'.symm (h _ hma _ hmb.meas _ hmc.meas)) _,
-      sorry,
+      rw set.image_inter_on' _,
+      simp_rw pi_unsubtype_img,
+      simp_rw set.preimage_image_eq (>[] b ∩ >[] c) (sorry),
+      rw set.inter_comm,
+      { rintro _ ⟨_, hx'⟩ _ ⟨hy, _⟩ heq,
+        have := pi_subtype_ext.mpr (λ i hi, pi_subtype_ext.mp heq i (or.inr hi)),
+        exact hx' (this.symm ▸ hy : pi_subtype C x ∈ c) },
       sorry
     },
     { intros a hma b hmb c hmc,
