@@ -42,6 +42,11 @@ def pi_unsubtype_union_img₁ {α : Type*} {β : α → Type*} (A : set α) (B :
 def pi_unsubtype_union_img₂ {α : Type*} {β : α → Type*} (A : set α) (B : set α) :
   set (Π i : B, β i) → set (Π i : A ∪ B, β i) := λ g, <[A ∪ B] (>[B] g)
 
+def set_to_subtype {α : Type*} (A : set α) (B : set α) : set A := λ x : A, ↑x ∈ B
+
+def pi_set_to_subtype {α : Type*} {β : α → Type*} (A : set α) (B : set α)
+  (f : Π i : B, β i) : Π i : set_to_subtype A B, β i := λ ⟨i, hi⟩, f ⟨i, hi⟩
+
 lemma pi_subtype_ext {α : Type*} {β : α → Type*} {A : set α} {f g : Π i, β i} : pi_subtype A f = pi_subtype A g ↔ ∀ i ∈ A, f i = g i := sorry
 
 notation  `>₁[`A`,`B`]` := pi_unsubtype_union_img₁ A B
@@ -50,15 +55,21 @@ notation  `>₂[`A`,`B`]` := pi_unsubtype_union_img₂ A B
 notation  `>₁[]` := pi_unsubtype_union_img₁ _ _
 notation  `>₂[]` := pi_unsubtype_union_img₂ _ _
 
+example {α : Type*} {β : α → Type*} (A : set α) (B : set α) (sb : set (Π i : B, β i))
+  : >₂[] sb = @pi_unsubtype_img _ (pi_subtype (A ∪ B) β) _ (pi_set_to_subtype (A ∪ B) B '' sb) := sorry
+
+example {α : Type*} {β : α → Type*} (A : set α) (B : set α) (sb : set (Π i : B, β i)) (h : B ⊆ A)
+  : >[] sb = >[] (@pi_unsubtype_img _ (pi_subtype A β) _ (pi_set_to_subtype A B '' sb)) := sorry
+
 example {α : Type*} {β : α → Type*} (A : set α) (B : set α)
   (a : set (Π i : A, β i)) (b : set (Π i : B, β i)) : >[] (>₁[] a ∩ >₂[] b) = >[] a ∩ >[] b :=
 begin
-  rw set.image_inter_on' _,
   simp_rw pi_unsubtype_img,
-  simp_rw set.preimage_image_eq (>[] a ∩ >[] b) (sorry),
-  { rintro _ ⟨_, hx'⟩ _ ⟨hy, _⟩ heq,
-    have := pi_subtype_ext.mpr (λ i hi, pi_subtype_ext.mp heq i (or.inr hi)),
-    exact hx' (this.symm ▸ hy : pi_subtype B x ∈ b) },
+  rw set.preimage_inter,
+  simp_rw pi_unsubtype_union_img₁,
+  simp_rw pi_unsubtype_union_img₂,
+  simp_rw pi_subtype_img,
+  simp_rw set.preimage_image_eq _ (sorry)
 end
 
 namespace measurable_space
