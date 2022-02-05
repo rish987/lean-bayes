@@ -58,22 +58,28 @@ notation `>₂[]` := pi_unsubtype_union_img₂ _ _
 
 lemma pi_subtype_subtype {α : Type*} {β : α → Type*} (A : set α) (B : set α)
   (x : Π i : α, β i) : pi_subtype (set_to_subtype A B) (pi_subtype A x) = λ (i : set_to_subtype A B), x i := rfl
+                       
 
-example {α : Type*} {β : α → Type*} (A : set α) (B : set α) (sb : set (Π i : B, β i))
+example {α : Type*} {β : α → Type*} [∀ i : α, inhabited (β i)] (A : set α) (B : set α) (sb : set (Π i : B, β i))
   : >₂[A,B] sb = >[set_to_subtype (A ∪ B) B] (pi_set_to_subtype (A ∪ B) B '' sb) :=
 begin
-  simp_rw pi_unsubtype_union_img₂,
-  simp_rw pi_unsubtype_img,
-  simp_rw pi_subtype_img,
+  simp_rw [pi_unsubtype_union_img₂, pi_unsubtype_img, pi_subtype_img],
   refine set.subset.antisymm _ _; intros x h,
   { obtain ⟨_, h', rfl⟩ := h,
     refine ⟨pi_subtype B _, h', _⟩,
     ext ⟨⟨_, _⟩, _⟩, refl },
   { obtain ⟨x', h', h⟩ := h,
-    refine ⟨_, _, _⟩,
-    sorry,
-    sorry,
-    sorry
+    classical,
+    let y : Π i, β i := λ i, if h : i ∈ B then x' ⟨i, h⟩ else if h : i ∈ A ∪ B then x ⟨i, h⟩ else default,
+    refine ⟨y, _, _⟩,
+    change pi_subtype B y ∈ sb,
+    convert h',
+    all_goals {refine pi_subtype_ext'.mpr _, rintro ⟨i, hi⟩},
+      exact dif_pos hi,
+    by_cases hi' : i ∈ B,
+      convert dif_pos hi',
+      exact (congr_fun h ⟨⟨_, hi⟩, hi'⟩).symm,
+    exact (dif_neg hi').trans (dif_pos hi)
   }
 end
 
