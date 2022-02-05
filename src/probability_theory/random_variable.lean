@@ -47,6 +47,7 @@ def set_to_subtype {α : Type*} (A : set α) (B : set α) : set A := λ x : A, �
 def pi_set_to_subtype {α : Type*} {β : α → Type*} (A : set α) (B : set α)
   (f : Π i : B, β i) : Π i : set_to_subtype A B, β i := λ ⟨i, hi⟩, f ⟨i, hi⟩
 
+lemma pi_subtype_ext' {α : Type*} {β : α → Type*} {A : set α} {f : Π i, β i} {g : Π i : A, β i} : pi_subtype A f = g ↔ ∀ i : A, f i = g i := sorry
 lemma pi_subtype_ext {α : Type*} {β : α → Type*} {A : set α} {f g : Π i, β i} : pi_subtype A f = pi_subtype A g ↔ ∀ i ∈ A, f i = g i := sorry
 
 notation  `>₁[`A`,`B`]` := pi_unsubtype_union_img₁ A B
@@ -55,11 +56,32 @@ notation  `>₂[`A`,`B`]` := pi_unsubtype_union_img₂ A B
 notation  `>₁[]` := pi_unsubtype_union_img₁ _ _
 notation  `>₂[]` := pi_unsubtype_union_img₂ _ _
 
+lemma pi_subtype_subtype {α : Type*} {β : α → Type*} (A : set α) (B : set α)
+  (x : Π i : α, β i) : pi_subtype (set_to_subtype A B) (pi_subtype A x) = λ (i : set_to_subtype A B), x i := rfl
+
 example {α : Type*} {β : α → Type*} (A : set α) (B : set α) (sb : set (Π i : B, β i))
   : >₂[] sb = @pi_unsubtype_img _ (pi_subtype (A ∪ B) β) _ (pi_set_to_subtype (A ∪ B) B '' sb) := sorry
 
-example {α : Type*} {β : α → Type*} (A : set α) (B : set α) (sb : set (Π i : B, β i)) (h : B ⊆ A)
-  : >[] sb = >[] (@pi_unsubtype_img _ (pi_subtype A β) _ (pi_set_to_subtype A B '' sb)) := sorry
+example {α : Type*} {β : α → Type*} (A : set α) (B : set α) (sb : set (Π i : B, β i)) (hba : B ⊆ A)
+  : >[B] sb = >[A] (@pi_unsubtype_img _ (pi_subtype A β) _ (pi_set_to_subtype A B '' sb)) :=
+begin
+  simp_rw pi_unsubtype_img,
+  rw set.preimage_preimage,
+  conv in (pi_subtype (set_to_subtype A B) (pi_subtype A _)) {rw pi_subtype_subtype},
+  have : ∀ (x : Π (i : α), β i), pi_subtype B x ∈ sb ↔ (λ (i : ↥(set_to_subtype A B)), x ↑i) ∈ (pi_set_to_subtype A B '' sb),
+  { intro x, split; intro h,
+    { refine ⟨pi_subtype B x, h, _⟩,
+      ext ⟨⟨_, _⟩, _⟩,
+      dsimp [pi_set_to_subtype, pi_subtype],
+      refl },
+    { obtain ⟨x', hxsb, hx'⟩ := h,
+      convert hxsb,
+      refine pi_subtype_ext'.mpr _,
+      rintro ⟨i, hi⟩,
+      exact (congr_fun hx' ⟨⟨i, hba hi⟩, hi⟩).symm } } ,
+  refine set.subset.antisymm _ _;
+  intro x, exact (this x).mp, exact (this x).mpr
+end
 
 example {α : Type*} {β : α → Type*} (A : set α) (B : set α)
   (a : set (Π i : A, β i)) (b : set (Π i : B, β i)) : >[] (>₁[] a ∩ >₂[] b) = >[] a ∩ >[] b :=
