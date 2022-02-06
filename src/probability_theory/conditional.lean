@@ -1,5 +1,6 @@
 import measure_theory.measure.measure_space
 import probability_theory.independence
+import probability_theory.meas
 
 namespace ennreal
 
@@ -47,20 +48,7 @@ variables {α : Type*} [measurable_space α] (μ : measure α)
 
 section definitions
 
-/-- Type class wrapper for measurable sets. -/
-class meas (s : set α) : Prop :=
-(meas : measurable_set s)
-
-/-- Type class wrapper for measurable functions. -/
-class fmeas [measurable_space α] {β : Type*} [measurable_space β] (f : α → β) : Prop :=
-(fmeas : measurable f)
-
 include μ
-
-/-- Represents the notion that a conditional probability measure "exists" for a measure `μ`
-and set `s` exactly when `s` is measurable with nonzero measure. -/
-class cond_meas (s : set α) extends meas s : Prop :=
-(meas_nz : μ s ≠ 0)
 
 /-- The conditional probability measure of measure `μ` on set `s` is `μ` restricted to `s` 
 and scaled by the inverse of `μ s` (to make it a probability measure). -/
@@ -68,20 +56,6 @@ def cond_measure (s : set α) : measure α :=
   (μ s)⁻¹ • μ.restrict s
 
 end definitions
-
--- TODO can this theorem be inferred automatically somehow?
-lemma cond_meas_iff (s : set α) : cond_meas μ s ↔ μ s ≠ 0 ∧ measurable_set s :=
-begin
-  split,
-    intro hcms,
-    exact ⟨hcms.meas_nz, hcms.meas⟩,
-  rintro ⟨hnz, hm⟩,
-  haveI := meas.mk hm,
-  exact ⟨hnz⟩
-end
-
-lemma not_cond_meas_zero {s : set α} [hms : meas s] (h : ¬cond_meas μ s) : μ s = 0 :=
-by simp [cond_meas_iff] at h; exact not_imp_not.mp h hms.meas
 
 localized "notation  μ `[` s `|` t `]` := cond_measure μ t s" in probability_theory
 localized "notation  μ `[|` t`]` := cond_measure μ t" in probability_theory
@@ -101,20 +75,6 @@ section bayes
 @[simp] lemma cond_measure_def (a : set α) [hma : meas a] (b : set α) :
   μ[b|a] = (μ a)⁻¹ * μ (a ∩ b) :=
 by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
-
-instance meas_inter_of_meas [measurable_space α] {s t : set α} [h1 : meas s] [h2 : meas t] :
-  meas (s ∩ t) := ⟨measurable_set.inter h1.meas h2.meas⟩
-
--- TODO can I replace the below two instances with something like this?
---instance cond_meas_of_cond_meas_subset {s t : set α} [meas t]
---  [hcmi : cond_meas μ s] [hsub : inhabited (s ⊆ t)] :
---  cond_meas μ t := ⟨ne_bot_of_le_ne_bot hcmi.meas_nz (μ.mono hsub.default)⟩
-
-instance cond_meas_of_cond_meas_inter₀ {s t : set α} [meas t] [hcmi : cond_meas μ (s ∩ t)] :
-  cond_meas μ t := ⟨ne_bot_of_le_ne_bot hcmi.meas_nz (μ.mono (set.inter_subset_right _ _))⟩
-
-instance cond_meas_of_cond_meas_inter₁ {s t : set α} [meas s] [hcmi : cond_meas μ (s ∩ t)] :
-  cond_meas μ s := ⟨ne_bot_of_le_ne_bot hcmi.meas_nz (μ.mono (set.inter_subset_left _ _))⟩
 
 instance cond_cond_meas_of_cond_meas_inter {s t : set α} [cond_meas μ s]
   [meas t] [hcmi : cond_meas μ (s ∩ t)] :
