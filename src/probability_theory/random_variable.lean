@@ -69,35 +69,36 @@ end definitions
 
 section marginal
 
-variable [hm : ∀ i : ι, fmeas (f i)]
+variable (hm : ∀ i : ι, measurable (f i))
 include hm
 
 lemma marginal_eq_marginalization_aux (mv : set ι) :
   marginal μ f mv = marginalization (joint μ f) mv :=
-by rw [marginalization, joint, map_map', function.comp]; refl
+by { rw [marginalization, joint, map_map, function.comp], refl,
+  apply measurable_pi_subtype, exact measurable_pi_iff.mpr hm }
 
 /-- The marginalization principle: the marginal probability of a particular 
 "marginal assignment" measurable set `s` is equal to the joint probability of
 that same set, extended to allow the unassigned variables to take any value. -/
 theorem marginal_def (mv : set ι) 
-  (s : set (Π i : mv, β i)) [meas s] :
+  {s : set (Π i : mv, β i)} (hms : measurable_set s) :
   marginal μ f mv s = joint μ f (>[] s) :=
-by rw [marginal_eq_marginalization_aux, marginalization, map_apply' s];
-  apply_instance
+by { rw [marginal_eq_marginalization_aux _ _ hm, marginalization, map_apply _ hms],
+  apply measurable_pi_subtype }
 
-instance joint_cond_meas_of_marginal (mv : set ι) 
-  (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (marginal μ f mv) s]
-  : cond_meas (joint μ f) (>[] s) := sorry
+lemma joint_cond_meas_of_marginal (mv : set ι) 
+  (s : set (Π i : mv, β i)) (hms : measurable_set s) (hcs : (marginal μ f mv) s ≠ 0)
+  : joint μ f (>[] s) ≠ 0 := sorry
 
-instance marginal_cond_meas_of_joint (mv : set ι) 
-  (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (joint μ f) (>[] s)]
-  : cond_meas (marginal μ f mv) s := sorry
+lemma marginal_cond_meas_of_joint (mv : set ι) 
+  (s : set (Π i : mv, β i)) (hms : measurable_set s) (hcs : (joint μ f) (>[] s) ≠ 0)
+  : marginal μ f mv s ≠ 0 := sorry
 
 lemma marginal_cond_meas_of_joint_inter {A B : set ι} (a : set (Π i : A, β i)) (b : set (Π i : B, β i))
-  [cond_meas (joint μ f) (>[] a ∩ >[] b)] : cond_meas (marginal μ f _) (>₁[] a ∩ >₂[] b) := sorry
+  (hjc : joint μ f (>[] a ∩ >[] b) ≠ 0) : marginal μ f _ (>₁[] a ∩ >₂[] b) ≠ 0 := sorry
 
 lemma joint_cond_meas_of_marginal_inter (A B : set ι) (a : set (Π i : A, β i)) (b : set (Π i : B, β i))
-  [cond_meas (marginal μ f _) (>₁[] a ∩ >₂[] b)] : cond_meas (joint μ f) (>[] a ∩ >[] b) := sorry
+  (hmc : marginal μ f _ (>₁[] a ∩ >₂[] b) ≠ 0) : joint μ f (>[] a ∩ >[] b) ≠ 0 := sorry
 
 end marginal
 
@@ -141,21 +142,20 @@ def cond_independent (A B C : set ι) : Prop :=
 
 end definitions
 
-theorem cond_def [is_probability_measure μ] [∀ i : ι, fmeas (f i)] (A B : set ι)
-  (c : set (Π i : B, β i)) [meas c]
-  (s : set (Π i : A, β i)) [meas s] :
+theorem cond_def [is_probability_measure μ] (hm : ∀ i : ι, measurable (f i)) (A B : set ι)
+  (c : set (Π i : B, β i)) (hmc : measurable_set c)
+  (s : set (Π i : A, β i)) (hms : measurable_set s) :
   cond μ f A B c s = cond_measure (joint μ f) (>[] c) (>[] s) :=
 begin
-  rw [cond, marginal_def],
-  have : joint (cond_measure μ ((λ a i, f i a) ⁻¹' (>[] c))) f
-    = cond_measure (joint μ f) (>[] c),
-  { apply measure.ext,
-    intros s' hms',
-    haveI := meas.mk hms',
-    rw [joint, map_apply'],
-    simp_rw [cond_measure_def, joint],
-    rw [map_apply', map_apply', set.preimage_inter] },
-  rw this
+  rw [cond, marginal_def _ _ hm _ hms],
+  congr, ext1 s' hms',
+  have hm' := measurable_pi_iff.mpr hm,
+  have hmc' := measurable_pi_subtype B hmc,
+  rw [joint, map_apply, cond_measure_def, cond_measure_def, joint,
+    map_apply, map_apply, set.preimage_inter];
+  try {assumption},
+  apply measurable_set.inter hmc' hms',
+  exact hm' hmc'
 end
 
 lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
@@ -165,10 +165,10 @@ lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
 lemma comap_subtype_subset (A : set ι) :
   {x | (@comap_subtype _ β _ A).measurable_set' x} ⊆ measurable_set := sorry
 
-theorem cond_independent_iff_cond_inter_irrel [∀ i : ι, fmeas (f i)] [is_probability_measure μ]
+theorem cond_independent_iff_cond_inter_irrel [is_probability_measure μ] (hm : ∀ i : ι, measurable (f i))
   (A B C : set ι) :
   cond_independent μ f A B C ↔ ∀ (b : set (Π i : B, β i)) (c : set (Π i : C, β i)),
-  meas b → meas c → cond_meas (marginal μ f (B ∪ C)) (>₁[] b ∩ >₂[] c)
+  measurable_set b → measurable_set c → marginal μ f (B ∪ C) (>₁[] b ∩ >₂[] c) ≠ 0
   → cond μ f A (B ∪ C) (>₁[] b ∩ >₂[] c) = cond μ f A C c :=
 begin
   rw [cond_independent, cond_indep, cond_indep_sets_iff],
@@ -179,8 +179,8 @@ begin
       → ∀ (c : set (Π (i : ι), β i)), (comap_subtype C).measurable_set' c
       → cond_indep_set' a b c (joint μ f))
       ↔ ∀ (b : set (Π (i : ↥B), β ↑i)) (c : set (Π (i : ↥C), β ↑i)), 
-      meas b → meas c →
-      cond_meas (marginal μ f (B ∪ C)) (>₁[] b ∩ >₂[] c)
+      measurable_set b → measurable_set c →
+      marginal μ f (B ∪ C) (>₁[] b ∩ >₂[] c) ≠ 0
       → cond μ f A (B ∪ C) (>₁[] b ∩ >₂[] c) = cond μ f A C c,
     simp_rw comap_subtype_ext,
     conv in (cond _ _ _ _ _ = cond _ _ _ _ _) { rw measure.ext_iff },
