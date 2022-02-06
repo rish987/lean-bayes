@@ -42,10 +42,6 @@ def cond_indep_sets_iff {α} [measurable_space α] (s1 s2 cs : set (set α))
   (hs1 : s1 ⊆ measurable_set) (hs2 : s2 ⊆ measurable_set) (hcs : cs ⊆ measurable_set) :
   cond_indep_sets s1 s2 cs μ ↔ (∀ (t1 ∈ s1) (t2 ∈ s2) (c ∈ cs), cond_indep_set' t1 t2 c μ) := sorry
 
-instance fmeas_pi_subtype {δ : Type*} {π : δ → Type*}
-  [Π a, measurable_space (π a)] (s : set δ) :
-  fmeas (@pi_subtype δ π s) := ⟨measurable_pi_subtype s⟩
-
 ------------
 
 variables {α : Type*} [m : measurable_space α] (μ : measure α) {ι: Type*}
@@ -96,6 +92,12 @@ instance joint_cond_meas_of_marginal (mv : set ι)
 instance marginal_cond_meas_of_joint (mv : set ι) 
   (s : set (Π i : mv, β i)) [hms : meas s] [cond_meas (joint μ f) (>[] s)]
   : cond_meas (marginal μ f mv) s := sorry
+
+lemma marginal_cond_meas_of_joint_inter {A B : set ι} (a : set (Π i : A, β i)) (b : set (Π i : B, β i))
+  [cond_meas (joint μ f) (>[] a ∩ >[] b)] : cond_meas (marginal μ f _) (>₁[] a ∩ >₂[] b) := sorry
+
+lemma joint_cond_meas_of_marginal_inter (A B : set ι) (a : set (Π i : A, β i)) (b : set (Π i : B, β i))
+  [cond_meas (marginal μ f _) (>₁[] a ∩ >₂[] b)] : cond_meas (joint μ f) (>[] a ∩ >[] b) := sorry
 
 end marginal
 

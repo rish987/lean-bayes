@@ -1,6 +1,5 @@
 import measure_theory.measure.measure_space
 import probability_theory.independence
-import probability_theory.meas
 
 namespace ennreal
 
@@ -62,99 +61,97 @@ localized "notation  μ `[|` t`]` := cond_measure μ t" in probability_theory
 
 /-- The conditional probability measure of any finite measure on any conditionable set
 is a probability measure. -/
-instance [is_finite_measure μ] {s : set α} [hcms : cond_meas μ s] :
+instance cond_prob_meas [is_finite_measure μ] {s : set α} (hcs : μ s ≠ 0) :
   is_probability_measure (μ[|s]) :=
   ⟨by rw [cond_measure, measure.smul_apply, measure.restrict_apply measurable_set.univ,
-    set.univ_inter, ennreal.inv_mul_cancel hcms.meas_nz (measure_ne_top _ s)]⟩
+    set.univ_inter, ennreal.inv_mul_cancel hcs (measure_ne_top _ s)]⟩
 
-variable [is_probability_measure μ] 
+variable [is_probability_measure μ]
 
 section bayes
 
 /-- The axiomatic definition of conditional probability derived from a measure-theoretic one. -/
-@[simp] lemma cond_measure_def (a : set α) [hma : meas a] (b : set α) :
+@[simp] lemma cond_measure_def {a : set α} (hma : measurable_set a) (b : set α) :
   μ[b|a] = (μ a)⁻¹ * μ (a ∩ b) :=
-by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma.meas, set.inter_comm]
+by rw [cond_measure, measure.smul_apply, measure.restrict_apply' hma, set.inter_comm]
 
-instance cond_cond_meas_of_cond_meas_inter {s t : set α} [cond_meas μ s]
-  [meas t] [hcmi : cond_meas μ (s ∩ t)] :
-  cond_meas (μ[|s]) t :=
+lemma cond_cond_meas_of_cond_meas_inter {s t : set α} (hms : measurable_set s)
+  (hci : μ (s ∩ t) ≠ 0) : μ[|s] t ≠ 0 :=
 begin
-  constructor,
   rw cond_measure_def,
   refine mul_ne_zero _ _,
   exact ennreal.inv_ne_zero.mpr (measure_ne_top _ _),
-  exact hcmi.meas_nz
+  all_goals {assumption}
 end
 
-instance cond_meas_inter_of_cond_cond_meas {s t : set α} [hmcs : cond_meas μ s]
-  [hmcc : cond_meas (μ[|s]) t] :
-  cond_meas μ (s ∩ t) :=
+lemma cond_meas_inter_of_cond_cond_meas {s t : set α} (hms : measurable_set s)
+  (hctcs : (μ[|s]) t ≠ 0) : μ (s ∩ t) ≠ 0 :=
 begin
-  haveI : meas (s ∩ t) := ⟨measurable_set.inter hmcs.meas hmcc.meas⟩,
-  constructor,
   refine (right_ne_zero_of_mul _),
   exact (μ s)⁻¹,
-  convert hmcc.meas_nz,
+  convert hctcs,
   change μ (s ∩ t) = (μ.restrict s) t,
-  rw [measure.restrict_apply' hmcs.meas, set.inter_comm]
+  rw [measure.restrict_apply' hms, set.inter_comm]
 end
+
+lemma meas_subset_ne {a b : set α} (hs : a ⊆ b) (hnz : μ a ≠ 0) : μ b ≠ 0 :=
+  pos_iff_ne_zero.mp (gt_of_ge_of_gt (μ.mono hs) (pos_iff_ne_zero.mpr hnz))
 
 /-- Conditioning first on `a` and then on `b` results in the same measure as conditioning
 on `a ∩ b`. -/
-@[simp] lemma cond_cond_eq_cond_inter (a : set α) (b : set α) [hcma : cond_meas μ a]
-  [cond_meas (μ[|a]) b] [hcmr : cond_meas μ (a ∩ b)] :
+@[simp] lemma cond_cond_eq_cond_inter {a : set α} {b : set α} (hma : measurable_set a) (hmb : measurable_set b) (hca : μ a ≠ 0)
+  (hci : μ (a ∩ b) ≠ 0) :
   μ[|a][|b] = (μ[|(a ∩ b)]) :=
 begin
   apply measure.ext,
   intros s hms,
-  simp [hcma.meas_nz, hcmr.meas_nz, measure_ne_top],
+  haveI := probability_theory.cond_prob_meas μ (meas_subset_ne μ (set.inter_subset_left _ _) hci),
+  simp [*, measure_ne_top],
   conv { to_lhs, rw mul_assoc, congr, skip, rw mul_comm },
   simp_rw ← mul_assoc,
-  rw [ennreal.mul_inv_cancel hcma.meas_nz (measure_ne_top _ a), one_mul,
+  rw [ennreal.mul_inv_cancel hca (measure_ne_top _ a), one_mul,
     ← set.inter_assoc, mul_comm]
 end
 
-@[simp] lemma cond_inter (a : set α) [hcma : cond_meas μ a] (b : set α) :
+@[simp] lemma cond_inter {a : set α} (hma : measurable_set a) (hca : μ a ≠ 0) (b : set α) :
   μ[b|a] * μ a = μ (a ∩ b) :=
-by rw [cond_measure_def μ a b, mul_comm, ←mul_assoc,
-  ennreal.mul_inv_cancel hcma.meas_nz (measure_ne_top _ a), one_mul]
+by rw [cond_measure_def μ hma b, mul_comm, ←mul_assoc,
+  ennreal.mul_inv_cancel hca (measure_ne_top _ a), one_mul]
 
 /-- Bayes' Theorem. -/
-theorem bayes (a : set α) [cond_meas μ a] (b : set α) [cond_meas μ b] :
+theorem bayes (a : set α) (hma : measurable_set a)
+  (b : set α) (hmb : measurable_set b) (hcb : μ b ≠ 0) :
   μ[b|a] = (μ a)⁻¹ * μ[a|b] * (μ b) :=
-by rw [mul_assoc, cond_inter μ b a, set.inter_comm, cond_measure_def]
+by rw [mul_assoc, cond_inter μ hmb hcb a, set.inter_comm, cond_measure_def _ hma]; apply_instance
 
 section indep
 
 /-- Two measurable sets are independent if and only if conditioning on one
 is irrelevant to the probability of the other. -/
-theorem indep_set_iff_cond_irrel (a : set α) [hma : meas a] (b : set α) [hmb : meas b] :
-  indep_set a b μ ↔ cond_meas μ a → μ[b|a] = μ b :=
+theorem indep_set_iff_cond_irrel {a : set α} (hma : measurable_set a)
+  {b : set α} (hmb : measurable_set b) :
+  indep_set a b μ ↔ μ a ≠ 0 → μ[b|a] = μ b :=
 begin
-  split,
-    intros hind hcma, 
-    haveI := hcma,
-    rw [cond_measure_def, (indep_set_iff_measure_inter_eq_mul hma.meas hmb.meas μ).mp hind,
-      ← mul_assoc, ennreal.inv_mul_cancel hcma.meas_nz (measure_ne_top _ _), one_mul],
-  intro hcondi, 
-  by_cases hcma : cond_meas μ a,
-  { have hcond := hcondi hcma,
-    refine (indep_set_iff_measure_inter_eq_mul hma.meas hmb.meas μ).mpr _,
-    rwa [ ennreal.inv_mul_eq_iff_eq_mul hcma.meas_nz (measure_ne_top _ _), set.inter_comm,
-      ← measure.restrict_apply' hma.meas] },
-  { have hz := not_cond_meas_zero _ hcma,
-    rw indep_set_iff_measure_inter_eq_mul hma.meas hmb.meas μ,
-    simp [measure_inter_null_of_null_left, hz] }
+  split; intro h,
+    intro hca, 
+    rw [cond_measure_def _ hma, (indep_set_iff_measure_inter_eq_mul hma hmb μ).mp h,
+      ← mul_assoc, ennreal.inv_mul_cancel hca (measure_ne_top _ _), one_mul], apply_instance,
+  by_cases hca : μ a = 0,
+  { rw indep_set_iff_measure_inter_eq_mul hma hmb μ,
+    simp [measure_inter_null_of_null_left, hca] },
+  { have hcond := h hca,
+    refine (indep_set_iff_measure_inter_eq_mul hma hmb μ).mpr _,
+    rwa [ ennreal.inv_mul_eq_iff_eq_mul hca (measure_ne_top _ _), set.inter_comm,
+      ← measure.restrict_apply' hma] },
 end
 
 lemma symm_iff {α} {s₁ s₂ : set (set α)} [measurable_space α] {μ : measure α} :
   indep_sets s₁ s₂ μ ↔ indep_sets s₂ s₁ μ :=
 ⟨indep_sets.symm, indep_sets.symm⟩
 
-theorem indep_set_iff_cond_irrel' (a : set α) [meas a] (b : set α) [meas b] :
-  indep_set b a μ ↔ cond_meas μ a → μ[b|a] = μ b :=
-iff.trans symm_iff (indep_set_iff_cond_irrel _ _ _)
+theorem indep_set_iff_cond_irrel' (a : set α) (hma : measurable_set a) (b : set α) (hmb : measurable_set b) :
+  indep_set b a μ ↔ μ a ≠ 0 → μ[b|a] = μ b :=
+iff.trans symm_iff (indep_set_iff_cond_irrel _ hma hmb)
 
 def cond_Indep_sets {α ι} [measurable_space α] (π : ι → set (set α))
   (C : set (set α)) (μ : measure α . volume_tac) : Prop :=
@@ -233,45 +230,43 @@ def cond_indep_fun_def {α ι} [measurable_space α] {β : ι → Type*}
   (f : Π (x : ι), α → β x) (C : set (set α)) (μ : measure α . volume_tac) :
   cond_Indep_fun m f C μ = ∀ c ∈ C, Indep_fun m f (μ[|c]) := rfl
 
-theorem cond_meas_inter (a : set α) [meas a] (b : set α) [meas b]
-  : cond_meas μ (b ∩ a) ↔ cond_meas (μ[|b]) a :=
+theorem cond_meas_inter (a : set α) {b : set α} (hmb : measurable_set b) :
+  μ (b ∩ a) ≠ 0 ↔ (μ[|b] a ≠ 0) :=
 begin
-  split; intro hcm; constructor,
-    rw cond_measure_def,
-    simp [hcm.meas_nz, measure_ne_top],
-  have := hcm.meas_nz,
-  simp [cond_measure_def, not_or_distrib] at this,
-  exact this.2
+  split; intro hc,
+    simp [*, measure_ne_top],
+  simp [*, not_or_distrib] at hc,
+  exact hc.2
 end
 
-def cond_indep_set_iff_cond_inter_irrel (a : set α) [hma : meas a]
-  (b : set α) [hmb : meas b] (c : set α) [hmc : meas c] :
-  cond_indep_set' a b c μ ↔ cond_meas μ (c ∩ a) → μ[b|c ∩ a] = μ[b|c] :=
+def cond_indep_set_iff_cond_inter_irrel {a : set α} (hma : measurable_set a)
+  {b : set α} (hmb : measurable_set b) {c : set α} (hmc : measurable_set c) :
+  cond_indep_set' a b c μ ↔ μ (c ∩ a) ≠ 0 → μ[b|c ∩ a] = μ[b|c] :=
 begin
-  have : cond_meas μ (c ∩ a) → (μ[b|c ∩ a] = μ[b|c] ↔ (μ[|c][|a]) b = μ[b|c]),
-  { intro h, haveI := h, rw ← cond_cond_eq_cond_inter },
-  by_cases h : cond_meas μ c,
-    haveI := h,
-    rw [cond_indep_set_def', forall_congr this, cond_meas_inter, indep_set_iff_cond_irrel],
-  have hz := not_cond_meas_zero _ h,
-  have inter_z : ∀ x, μ (c ∩ x) = 0 :=
-    λ x, eq_bot_iff.mpr (le_trans (μ.mono (set.inter_subset_left c x)) hz.le),
-  rw [cond_indep_set_def', indep_set, indep, indep_sets],
-  refine iff_of_true _ _,
-  { intros,
-    simp [cond_measure_def, inter_z] },
-  { refine not.elim _,
-    simp [cond_meas_iff],
-    intro,
-    have := inter_z a,
-    contradiction }
+  by_cases h : μ c = 0,
+  { have inter_z : ∀ x, μ (c ∩ x) = 0 :=
+      λ x, eq_bot_iff.mpr (le_trans (μ.mono (set.inter_subset_left _ _)) h.le),
+    rw [cond_indep_set_def', indep_set, indep, indep_sets],
+    refine iff_of_true _ _,
+    { intros,
+      simp [hmc, inter_z] },
+    { refine not.elim _,
+      intro,
+      have := inter_z a,
+      contradiction } },
+  { have : μ (c ∩ a) ≠ 0 → (μ[b|c ∩ a] = μ[b|c] ↔ (μ[|c][|a]) b = μ[b|c]),
+    { intro h, haveI := h,
+      rw ← cond_cond_eq_cond_inter μ hmc hma _ h,
+      exact (meas_subset_ne _ (set.inter_subset_left _ _) h) },
+    haveI := probability_theory.cond_prob_meas μ h,
+    rw [cond_indep_set_def', forall_congr this, cond_meas_inter, indep_set_iff_cond_irrel];
+    assumption }
 end
 
-theorem cond_indep_set_iff_cond_inter_irrel' (a : set α) [meas a]
-  (b : set α) [meas b]
-  (c : set α) [meas c]
-  : cond_indep_set' b a c μ ↔ cond_meas μ (c ∩ a) → μ[b|c ∩ a] = μ[b|c] :=
-iff.trans cond_indep_set'.symm_iff (cond_indep_set_iff_cond_inter_irrel _ _ _ _)
+theorem cond_indep_set_iff_cond_inter_irrel' {a : set α} (hma : measurable_set a)
+  {b : set α} (hmb : measurable_set b) {c : set α} (hmc : measurable_set c)
+  : cond_indep_set' b a c μ ↔ μ (c ∩ a) ≠ 0 → μ[b|c ∩ a] = μ[b|c] :=
+iff.trans cond_indep_set'.symm_iff (cond_indep_set_iff_cond_inter_irrel _ hma hmb hmc)
 
 end indep
 
