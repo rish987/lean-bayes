@@ -49,6 +49,20 @@ variables {α : Type*} [m : measurable_space α] (μ : measure α) {ι: Type*}
 
 section definitions
 
+-- this one may take quite a bit of work, but assuming B ⊆ A should make it easier...
+lemma pi_set_to_subtype_img_meas {A B : set ι} {b : set (Π i : B, β i)} (hmb : measurable_set b)
+  : measurable_set (pi_set_to_subtype A B '' b) := sorry
+
+def comap_subtype (S : set ι) :
+  measurable_space (Π i : ι, β i) := measurable_space.comap (pi_subtype S) infer_instance
+
+lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
+  (∀ x, (comap_subtype A).measurable_set' x → P x)
+  ↔ (∀ x, measurable_set x → P (>[A] x)) := set.maps_image_to _ _ _ _
+
+lemma comap_subtype_subset (A : set ι) :
+  {x | (@comap_subtype _ β _ A).measurable_set' x} ⊆ measurable_set := sorry
+
 /-- The joint distribution induced by an indexed family of random variables `f`. -/
 def joint : measure (Π i : ι, β i) := map (λ a i, f i a) μ
 
@@ -68,7 +82,6 @@ def marginalization (μ : measure (Π i : ι, β i)) (mv : set ι) :
 end definitions
 
 section marginal
-
 variable (hm : ∀ i : ι, measurable (f i))
 include hm
 
@@ -87,17 +100,17 @@ by { rw [marginal_eq_marginalization_aux _ _ hm, marginalization, map_apply _ hm
   apply measurable_pi_subtype }
 
 lemma joint_cond_meas_of_marginal (mv : set ι) 
-  (s : set (Π i : mv, β i)) (hms : measurable_set s) (hcs : (marginal μ f mv) s ≠ 0)
-  : joint μ f (>[] s) ≠ 0 := sorry
+  (s : set (Π i : mv, β i)) (hms : measurable_set s) (hcs : (marginal μ f mv) s ≠ 0) :
+  joint μ f (>[] s) ≠ 0 := sorry
 
 lemma marginal_cond_meas_of_joint (mv : set ι) 
-  (s : set (Π i : mv, β i)) (hms : measurable_set s) (hcs : (joint μ f) (>[] s) ≠ 0)
-  : marginal μ f mv s ≠ 0 := sorry
+  (s : set (Π i : mv, β i)) (hms : measurable_set s) (hcs : (joint μ f) (>[] s) ≠ 0) :
+  marginal μ f mv s ≠ 0 := sorry
 
-lemma marginal_cond_meas_of_joint_inter {A B : set ι} (a : set (Π i : A, β i)) (b : set (Π i : B, β i))
+lemma marginal_cond_meas_of_joint_inter {A B : set ι} {a : set (Π i : A, β i)} {b : set (Π i : B, β i)}
   (hjc : joint μ f (>[] a ∩ >[] b) ≠ 0) : marginal μ f _ (>₁[] a ∩ >₂[] b) ≠ 0 := sorry
 
-lemma joint_cond_meas_of_marginal_inter (A B : set ι) (a : set (Π i : A, β i)) (b : set (Π i : B, β i))
+lemma joint_cond_meas_of_marginal_inter {A B : set ι} {a : set (Π i : A, β i)} {b : set (Π i : B, β i)}
   (hmc : marginal μ f _ (>₁[] a ∩ >₂[] b) ≠ 0) : joint μ f (>[] a ∩ >[] b) ≠ 0 := sorry
 
 end marginal
@@ -107,9 +120,6 @@ end marginal
 section independence
 
 section definitions
-
-def comap_subtype (S : set ι) :
-  measurable_space (Π i : ι, β i) := measurable_space.comap (pi_subtype S) infer_instance
 
 /-- A list of sets of random variables `S` is independent if the list of measurable spaces
 it incurs on the joint distribution is independent. -/
@@ -152,18 +162,10 @@ begin
   have hm' := measurable_pi_iff.mpr hm,
   have hmc' := measurable_pi_subtype B hmc,
   rw [joint, map_apply, cond_measure_def, cond_measure_def, joint,
-    map_apply, map_apply, set.preimage_inter];
-  try {assumption},
+    map_apply, map_apply, set.preimage_inter]; try {assumption},
   apply measurable_set.inter hmc' hms',
   exact hm' hmc'
 end
-
-lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
-  (∀ x, (comap_subtype A).measurable_set' x → P x)
-  ↔ (∀ x, measurable_set x → P (>[A] x)) := set.maps_image_to _ _ _ _
-
-lemma comap_subtype_subset (A : set ι) :
-  {x | (@comap_subtype _ β _ A).measurable_set' x} ⊆ measurable_set := sorry
 
 theorem cond_independent_iff_cond_inter_irrel [is_probability_measure μ] (hm : ∀ i : ι, measurable (f i))
   (A B C : set ι) :
@@ -184,34 +186,33 @@ begin
       → cond μ f A (B ∪ C) (>₁[] b ∩ >₂[] c) = cond μ f A C c,
     simp_rw comap_subtype_ext,
     conv in (cond _ _ _ _ _ = cond _ _ _ _ _) { rw measure.ext_iff },
-    split;
-    intro h,
+    split; intro h,
     { intros b c hmb hmc hcmbc a hma,
-      -- TODO can I avoid this instance list?
-      haveI := hcmbc,
-      -- FIXME why was this necessary?
-      haveI := meas.mk hcmbc.meas,
-      haveI := hmb,
-      haveI := hmc,
-      haveI := meas.mk hma,
-      haveI : cond_meas (joint μ f) (>[] c ∩ >[] b) := sorry,
-      simp_rw [cond_def],
-      convert (cond_indep_set_iff_cond_inter_irrel (joint μ f) (>[] b) (>[] a) (>[] c)).mp
-        (cond_indep_set'.symm (h _ hma _ hmb.meas _ hmc.meas)) infer_instance,
-      rw [pi_unsubtype_union_img_inter₁₂, set.inter_comm] },
+      have : joint μ f (>[] b ∩ >[] c) ≠ 0
+        := joint_cond_meas_of_marginal_inter _ _ hm hcmbc,
+      rw set.inter_comm at this,
+      rw [cond_def, cond_def]; try {assumption},
+      convert (cond_indep_set_iff_cond_inter_irrel (joint μ f) _ _ _).mp
+        (cond_indep_set'.symm (h _ hma _ hmb _ hmc)) _;
+      try {exact measurable_pi_subtype _ (by assumption)},
+      rw [pi_unsubtype_union_img_inter₁₂, set.inter_comm],
+      assumption,
+      refine measurable_set.inter _ _;
+      refine measurable_pi_subtype _ _;
+      exact pi_set_to_subtype_img_meas (by assumption) },
     { intros a hma b hmb c hmc,
-      haveI := meas.mk hma,
-      haveI := meas.mk hmb,
-      haveI := meas.mk hmc,
       rw cond_indep_set_iff_cond_inter_irrel',
       intro hcmbc,
-      haveI := hcmbc,
-      haveI hcmbc' : cond_meas (marginal μ f _) (>₁[] b ∩ >₂[] c) := sorry,
-      -- FIXME why was this necessary?
-      haveI := meas.mk hcmbc'.meas,
-      have := h b c _ _ _ a hma; try {apply_instance},
-      rw [cond_def, cond_def] at this,
-      rwa [set.inter_comm, ← pi_unsubtype_union_img_inter₁₂] } },
+      rw set.inter_comm at hcmbc,
+      have : marginal μ f _ (>₁[] b ∩ >₂[] c) ≠ 0 
+        := marginal_cond_meas_of_joint_inter _ _ hm hcmbc,
+      have := h b c _ _ _ a hma; try {assumption},
+      rw [cond_def, cond_def] at this; try {assumption},
+      rwa [set.inter_comm, ← pi_unsubtype_union_img_inter₁₂],
+      { refine measurable_set.inter _ _;
+        refine measurable_pi_subtype _ _;
+        exact pi_set_to_subtype_img_meas (by assumption) },
+      all_goals {exact measurable_pi_subtype _ (by assumption)} } },
   all_goals {exact comap_subtype_subset _}
 end
 
