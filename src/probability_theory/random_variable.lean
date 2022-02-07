@@ -5,6 +5,9 @@ import probability_theory.pi_subtype
 
 open measure_theory measure_theory.measure measurable_space
 
+def heq_congr {A B C : Type*} (hAB : A = B) {f : A → C} {g : B → C} (hfg : f == g)
+  {a : A} {b : B} (hab : a == b) : f a = g b := sorry
+
 noncomputable theory
 
 namespace probability_theory
@@ -169,8 +172,9 @@ end
 
 theorem cond_independent_iff_cond_inter_irrel [is_probability_measure μ] (hm : ∀ i : ι, measurable (f i))
   (A B C : set ι) :
-  cond_independent μ f A B C ↔ ∀ (b : set (Π i : B, β i)) (c : set (Π i : C, β i)),
-  measurable_set b → measurable_set c → marginal μ f (B ∪ C) (>₁[] b ∩ >₂[] c) ≠ 0
+  cond_independent μ f A B C ↔ ∀ (b : set (Π i : B, β i)) (hmb : measurable_set b)
+  (c : set (Π i : C, β i)) (hmc : measurable_set c),
+  marginal μ f (B ∪ C) (>₁[] b ∩ >₂[] c) ≠ 0
   → cond μ f A (B ∪ C) (>₁[] b ∩ >₂[] c) = cond μ f A C c :=
 begin
   rw [cond_independent, cond_indep, cond_indep_sets_iff],
@@ -180,14 +184,14 @@ begin
       → ∀ (b : set (Π (i : ι), β i)), (comap_subtype B).measurable_set' b
       → ∀ (c : set (Π (i : ι), β i)), (comap_subtype C).measurable_set' c
       → cond_indep_set' a b c (joint μ f))
-      ↔ ∀ (b : set (Π (i : ↥B), β ↑i)) (c : set (Π (i : ↥C), β ↑i)), 
-      measurable_set b → measurable_set c →
+      ↔ ∀ (b : set (Π (i : ↥B), β ↑i)) (hmb : measurable_set b)
+      (c : set (Π (i : ↥C), β ↑i)) (hmc : measurable_set c),
       marginal μ f (B ∪ C) (>₁[] b ∩ >₂[] c) ≠ 0
       → cond μ f A (B ∪ C) (>₁[] b ∩ >₂[] c) = cond μ f A C c,
     simp_rw comap_subtype_ext,
     conv in (cond _ _ _ _ _ = cond _ _ _ _ _) { rw measure.ext_iff },
     split; intro h,
-    { intros b c hmb hmc hcmbc a hma,
+    { intros b hmb c hmc hcmbc a hma,
       have : joint μ f (>[] b ∩ >[] c) ≠ 0
         := joint_cond_meas_of_marginal_inter _ _ hm hcmbc,
       rw set.inter_comm at this,
@@ -206,7 +210,7 @@ begin
       rw set.inter_comm at hcmbc,
       have : marginal μ f _ (>₁[] b ∩ >₂[] c) ≠ 0 
         := marginal_cond_meas_of_joint_inter _ _ hm hcmbc,
-      have := h b c _ _ _ a hma; try {assumption},
+      have := h b _ c _ _ a hma; try {assumption},
       rw [cond_def, cond_def] at this; try {assumption},
       rwa [set.inter_comm, ← pi_unsubtype_union_img_inter₁₂],
       { refine measurable_set.inter _ _;
@@ -216,38 +220,39 @@ begin
   all_goals {exact comap_subtype_subset _}
 end
 
--- TODO prove this concisely using the above theorem when C = ∅
-theorem independent_iff_cond_irrel [∀ i : ι, fmeas (f i)] [is_probability_measure μ]
+theorem independent_iff_cond_irrel  [is_probability_measure μ] (hm : ∀ i : ι, measurable (f i))
   (A B : set ι) :
-  independent μ f A B ↔ ∀ (c : set (Π i : B, β i)), cond_meas (marginal μ f B) c
-  → cond μ f A B c = marginal μ f A :=
+  independent μ f A B ↔ ∀ (b : set (Π i : B, β i)) (hmb : measurable_set b), marginal μ f B b ≠ 0
+  → cond μ f A B b = marginal μ f A :=
 begin
-  rw [independent, indep, indep_sets_iff],
-  { -- FIXME this is just to pattern-match, can I avoid this somehow?
-    change (∀ (a : set (Π (i : ι), β i)), (comap_subtype A).measurable_set' a
-      → ∀ (b : set (Π (i : ι), β i)), (comap_subtype B).measurable_set' b
-      → indep_set a b (joint μ f))
-      ↔ ∀ (c : set (Π (i : ↥B), β ↑i)), cond_meas (marginal μ f B) c 
-      → cond μ f A B c = marginal μ f A,
-    simp_rw comap_subtype_ext,
-    conv in (cond _ _ _ _ _ = marginal _ _ _) { rw measure.ext_iff },
-    split;
-    intro h,
-    { intros c hcmc s hms,
-      haveI := meas.mk hms,
-      rw [cond_def, marginal_def], 
-      exact (indep_set_iff_cond_irrel _ _ _).mp
-        (indep_sets.symm (h _ hms _ hcmc.meas)) infer_instance },
-    { intros s hms c hmc,
-      haveI := meas.mk hms,
-      haveI := meas.mk hmc,
-      rw indep_set_iff_cond_irrel',
-      intro hcms,
-      haveI := hcms,
-      have := h c infer_instance s hms,
-      rwa [cond_def, marginal_def] at this } },
-  exact comap_subtype_subset _,
-  exact comap_subtype_subset _
+  convert cond_independent_iff_cond_inter_irrel μ f hm A B ∅; ext,
+  sorry,
+  refine forall_congr _, intro b,
+  refine forall_congr _, intro hmb,
+  haveI : subsingleton (Π i : (∅ : set ι), β i) := ⟨λ f g, by ext ⟨x, hx⟩; exact false.elim hx⟩,
+  have h1 : ⇑(marginal μ f (B ∪ ∅)) == ⇑(marginal μ f B) := by rw set.union_empty,
+  have h2 : cond μ f A (B ∪ ∅) == cond μ f A B := by rw set.union_empty,
+  have h3 : >₁[B,∅] b == b := begin
+    rw [pi_unsubtype_union_img₁, set.union_empty],
+    refine heq_of_eq _,
+    sorry 
+  end,
+  have : (marginal μ f (B ∪ ∅) (>₁[] b ∩ >₂[] set.univ) ≠ 0
+    → cond μ f A (B ∪ ∅) (>₁[] b ∩ >₂[] set.univ) = cond μ f A ∅ set.univ)
+    ↔ (marginal μ f B b ≠ 0 → cond μ f A B b = marginal μ f A),
+  { simp_rw [pi_unsubtype_union_img₂, pi_unsubtype_img,
+      set.image_univ_of_surjective (sorry), set.preimage_univ, set.inter_univ],
+    rw heq_congr (by rw set.union_empty) h1 h3,
+    rw heq_congr (by rw set.union_empty) h2 h3,
+    have : cond μ f A ∅ set.univ = marginal μ f A := sorry,
+    rw this },
+  split; intro h,
+  { refine subsingleton.set_cases _ _; intro hmc, simp_rw [pi_unsubtype_union_img₂, pi_unsubtype_img],
+    simp_rw [set.image_empty, set.preimage_empty, set.inter_empty],
+    intro h', exact absurd (outer_measure.empty' _) h',
+    rwa this },
+  { have h' := h set.univ measurable_set.univ,
+    rwa this at h' },
 end
 
 end conditional
