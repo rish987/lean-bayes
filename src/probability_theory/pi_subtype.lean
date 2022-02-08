@@ -24,16 +24,22 @@ def set_to_subtype {α : Type*} (A : set α) (B : set α) : set A := λ x : A, �
 def pi_set_to_subtype {α : Type*} {β : α → Type*} (A : set α) (B : set α)
   (f : Π i : B, β i) : Π i : set_to_subtype A B, β i := λ ⟨i, hi⟩, f ⟨i, hi⟩
 
+@[reducible]
+def pi_unsubtype_set {α : Type*} {β : α → Type*} (A : set α) (B : set α) :
+  set (Π i : B, β i) → set (Π i : A, β i)
+  := λ g, >[set_to_subtype A B] (pi_set_to_subtype A B '' g)
+
+notation `>>[`A`]` := pi_unsubtype_set A _
+notation `>>[]` := pi_unsubtype_set _ _
+
 -- TODO generalize to set-indexed version using `Union`
 @[reducible]
 def pi_unsubtype_union_img₁ {α : Type*} {β : α → Type*} (A : set α) (B : set α) :
-  set (Π i : A, β i) → set (Π i : A ∪ B, β i)
-  := λ g, >[set_to_subtype (A ∪ B) A] (pi_set_to_subtype (A ∪ B) A '' g)
+  set (Π i : A, β i) → set (Π i : A ∪ B, β i) := λ g, >>[A ∪ B] g
 
 @[reducible]
 def pi_unsubtype_union_img₂ {α : Type*} {β : α → Type*} (A : set α) (B : set α) :
-  set (Π i : B, β i) → set (Π i : A ∪ B, β i)
-  := λ g, >[set_to_subtype (A ∪ B) B] (pi_set_to_subtype (A ∪ B) B '' g)
+  set (Π i : B, β i) → set (Π i : A ∪ B, β i) := λ g, >>[A ∪ B] g
 
 lemma pi_subtype_ext' {α : Type*} {β : α → Type*} {A : set α}
 {f : Π i, β i} {g : Π i : A, β i} : pi_subtype A f = g ↔ ∀ i : A, f i = g i := sorry

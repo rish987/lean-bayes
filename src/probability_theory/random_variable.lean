@@ -174,6 +174,12 @@ begin
   exact hm' hmc'
 end
 
+lemma independent_iff_cond_independent_empty [is_probability_measure μ]
+  (A B : set ι) : independent μ f A B ↔ cond_independent μ f A B ∅ := sorry
+
+lemma cond_empty_eq_marginal [is_probability_measure μ]
+  (A : set ι) : cond μ f A ∅ set.univ = marginal μ f A := sorry
+
 theorem cond_independent_iff_cond_inter_irrel [is_probability_measure μ] (hm : ∀ i : ι, measurable (f i))
   (A B C : set ι) :
   cond_independent μ f A B C ↔ ∀ (b : set (Π i : B, β i)) (hmb : measurable_set b)
@@ -230,7 +236,7 @@ theorem independent_iff_cond_irrel  [is_probability_measure μ] (hm : ∀ i : ι
   → cond μ f A B b = marginal μ f A :=
 begin
   convert cond_independent_iff_cond_inter_irrel μ f hm A B ∅; ext,
-  sorry,
+  exact independent_iff_cond_independent_empty _ _ A B,
   refine forall_congr _, intro b,
   refine forall_congr _, intro hmb,
   haveI : subsingleton (Π i : (∅ : set ι), β i) := ⟨λ f g, by ext ⟨x, hx⟩; exact false.elim hx⟩,
@@ -239,19 +245,19 @@ begin
   have h3 : >₁[B,∅] b == b := begin
     rw [pi_unsubtype_union_img₁, set.union_empty],
     refine heq_of_eq _,
-    sorry 
+    exact pi_unsubtype_set_same _ _
   end,
   have : (marginal μ f (B ∪ ∅) (>₁[] b ∩ >₂[] set.univ) ≠ 0
     → cond μ f A (B ∪ ∅) (>₁[] b ∩ >₂[] set.univ) = cond μ f A ∅ set.univ)
     ↔ (marginal μ f B b ≠ 0 → cond μ f A B b = marginal μ f A),
-  { simp_rw [pi_unsubtype_union_img₂, pi_unsubtype_img,
-      set.image_univ_of_surjective (sorry), set.preimage_univ, set.inter_univ],
+  { simp_rw [pi_unsubtype_union_img₂, pi_unsubtype_set, pi_unsubtype_img,
+      set.image_univ_of_surjective (pi_set_to_subtype_surjective _ _), set.preimage_univ, set.inter_univ],
     rw heq_congr (by rw set.union_empty) h1 h3,
     rw heq_congr (by rw set.union_empty) h2 h3,
-    have : cond μ f A ∅ set.univ = marginal μ f A := sorry,
-    rw this },
+    rw cond_empty_eq_marginal },
   split; intro h,
-  { refine subsingleton.set_cases _ _; intro hmc, simp_rw [pi_unsubtype_union_img₂, pi_unsubtype_img],
+  { refine subsingleton.set_cases _ _; intro hmc,
+    simp_rw [pi_unsubtype_union_img₂, pi_unsubtype_set, pi_unsubtype_img],
     simp_rw [set.image_empty, set.preimage_empty, set.inter_empty],
     intro h', exact absurd (outer_measure.empty' _) h',
     rwa this },
