@@ -6,7 +6,11 @@ import probability_theory.pi_subtype
 open measure_theory measure_theory.measure measurable_space
 
 def heq_congr {A B C : Type*} (hAB : A = B) {f : A → C} {g : B → C} (hfg : f == g)
-  {a : A} {b : B} (hab : a == b) : f a = g b := sorry
+  {a : A} {b : B} (hab : a == b) : f a = g b := begin
+  revert a b f g, rw hAB,
+  intros,
+  exact congr (eq_of_heq hfg) (eq_of_heq hab)
+end
 
 noncomputable theory
 
