@@ -239,20 +239,22 @@ begin
   exact hc.2
 end
 
+def indep_set_of_cond_null_measure (a b c : set α) (hmc : measurable_set c) (h : μ c = 0) : indep_set a b (μ [| c]) :=
+by rw [indep_set, indep, indep_sets]; intros; simp [hmc, h, measure_inter_null_of_null_left]
+
+def indep_sets_of_cond_null_measure (a b : set (set α)) (c : set α) (hmc : measurable_set c) (h : μ c = 0) : indep_sets a b (μ [| c]) :=
+by intros _ _ _ _; simp [hmc, h, measure_inter_null_of_null_left]
+
 def cond_indep_set_iff_cond_inter_irrel {a : set α} (hma : measurable_set a)
   {b : set α} (hmb : measurable_set b) {c : set α} (hmc : measurable_set c) :
   cond_indep_set' a b c μ ↔ μ (c ∩ a) ≠ 0 → μ[b|c ∩ a] = μ[b|c] :=
 begin
   by_cases h : μ c = 0,
-  { have inter_z : ∀ x, μ (c ∩ x) = 0 :=
-      λ x, eq_bot_iff.mpr (le_trans (μ.mono (set.inter_subset_left _ _)) h.le),
-    rw [cond_indep_set_def', indep_set, indep, indep_sets],
-    refine iff_of_true _ _,
-    { intros,
-      simp [hmc, inter_z] },
+  { rw [cond_indep_set_def'],
+    refine iff_of_true (indep_set_of_cond_null_measure _ _ _ _ hmc h) _,
     { refine not.elim _,
       intro,
-      have := inter_z a,
+      have := measure_inter_null_of_null_left a h,
       contradiction } },
   { have : μ (c ∩ a) ≠ 0 → (μ[b|c ∩ a] = μ[b|c] ↔ (μ[|c][|a]) b = μ[b|c]),
     { intro h, haveI := h,

@@ -3,8 +3,6 @@ import probability_theory.independence
 import probability_theory.conditional
 import probability_theory.pi_subtype
 
-open measure_theory measure_theory.measure measurable_space
-
 def heq_congr {A B C : Type*} (hAB : A = B) {f : A → C} {g : B → C} (hfg : f == g)
   {a : A} {b : B} (hab : a == b) : f a = g b := begin
   revert a b f g, rw hAB,
@@ -12,7 +10,56 @@ def heq_congr {A B C : Type*} (hAB : A = B) {f : A → C} {g : B → C} (hfg : f
   exact congr (eq_of_heq hfg) (eq_of_heq hab)
 end
 
+lemma supr_emptyset' {α β} [complete_lattice α] {f : subtype ∅ → α} :
+  (⨆ x : (∅ : set β), f x) = ⊥ := by simp
+
+lemma forall_or_imp_iff {α} (p q r : α → Prop) (h : ∀ a, p a → r a) : (∀ a, (p a ∨ q a) → r a) ↔ (∀ a, q a → r a) :=
+begin
+  apply forall_congr,
+  intro a,
+  specialize h a,
+  finish
+end
+
+-- TODO do I really need this?
+lemma forall_or_imp_iff' {α} (p q r : α → Prop) (h : ∀ a, p a → r a) : (∀ a, (q a ∨ p a) → r a) ↔ (∀ a, q a → r a) :=
+  by simp_rw or_comm; exact forall_or_imp_iff _ _ _ h
+
 noncomputable theory
+
+namespace measure_theory
+
+def bot_measurable_space {α} : measurable_space α :=
+begin
+  refine measurable_space.mk (set.union {∅} {set.univ}) _ _ _,
+  exact or.inl rfl,
+  intros s hs,
+  cases hs; change _ = _ at hs; subst hs,
+  rw set.compl_empty, exact or.inr rfl,
+  rw set.compl_univ, exact or.inl rfl,
+  intros f hf,
+  -- TODO pull things out into their own lemmas
+  by_cases ∃ i : ℕ, f i = set.univ,
+    rcases h with ⟨i, hfi⟩,
+    have : set.univ ≤ (⋃ (i : ℕ), f i) := by rw ← hfi; exact le_supr f i,
+    exact or.inr (top_le_iff.mp this),
+  simp at h,
+  rw set.Union_eq_empty.mpr (λ x, (hf x).elim id (λ hf, absurd hf (h x))),
+  exact or.inl rfl
+end
+
+lemma bot_measurable_space_eq_bot {α} : @bot_measurable_space α = ⊥ :=
+begin
+  refine le_bot_iff.mp _,
+  intros i hi,
+  cases hi; change _ = _ at hi; subst hi,
+  exact @measurable_set.empty _ ⊥,
+  exact measurable_set.univ
+end
+
+end measure_theory
+
+open measure_theory measure_theory.measure measurable_space
 
 namespace probability_theory
 
@@ -175,7 +222,20 @@ begin
 end
 
 lemma independent_iff_cond_independent_empty [is_probability_measure μ]
-  (A B : set ι) : independent μ f A B ↔ cond_independent μ f A B ∅ := sorry
+  (A B : set ι) : independent μ f A B ↔ cond_independent μ f A B ∅ :=
+begin
+  rw cond_independent,
+  have : @comap_subtype _ β _ ∅ = ⊥ :=
+    by rw comap_subtype; convert @comap_bot _ _ (pi_subtype ∅); exact supr_emptyset',
+  rw [this, ← bot_measurable_space_eq_bot],
+  have : cond_indep (comap_subtype A) (comap_subtype B) bot_measurable_space.measurable_set' (joint μ f)
+    ↔ cond_indep (comap_subtype A) (comap_subtype B) {set.univ} (joint μ f),
+  { refine forall_or_imp_iff _ _ _ _,
+    intros a ha, change _ = _ at ha, subst ha,
+    exact indep_sets_of_cond_null_measure _ _ _ _ measurable_set.empty (joint μ f).empty },
+  rw this,
+  sorry
+end
 
 lemma cond_empty_eq_marginal [is_probability_measure μ]
   (A : set ι) : cond μ f A ∅ set.univ = marginal μ f A := sorry
