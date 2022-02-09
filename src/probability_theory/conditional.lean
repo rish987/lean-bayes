@@ -43,7 +43,7 @@ namespace probability_theory
 
 section
 
-variables {α : Type*} [measurable_space α] (μ : measure α)
+variables {α : Type*} [m : measurable_space α] (μ : measure α)
 
 section definitions
 
@@ -69,6 +69,9 @@ instance cond_prob_meas [is_finite_measure μ] {s : set α} (hcs : μ s ≠ 0) :
 variable [is_probability_measure μ]
 
 section bayes
+
+@[simp] lemma cond_univ [is_probability_measure μ] : μ[|set.univ] = μ :=
+by simp [cond_measure, measure_univ, measure.restrict_univ]
 
 /-- The axiomatic definition of conditional probability derived from a measure-theoretic one. -/
 @[simp] lemma cond_measure_def {a : set α} (hma : measurable_set a) (b : set α) :
@@ -169,6 +172,7 @@ lemma cond_Indep_def {α ι} (m : ι → measurable_space α) [measurable_space 
   (C : set (set α)) (μ : measure α . volume_tac) :
   cond_Indep m C μ = ∀ c ∈ C, Indep m (μ[|c]) := rfl
 
+                                                 set_option pp.implicit true
 def cond_indep {α} (m₁ m₂ : measurable_space α) [measurable_space α] (C : set (set α))
   (μ : measure α . volume_tac) : Prop :=
 cond_indep_sets (m₁.measurable_set') (m₂.measurable_set') C μ
@@ -239,13 +243,21 @@ begin
   exact hc.2
 end
 
-def indep_set_of_cond_null_measure (a b c : set α) (hmc : measurable_set c) (h : μ c = 0) : indep_set a b (μ [| c]) :=
+lemma indep_set_of_cond_null_measure (a b c : set α) (hmc : measurable_set c) (h : μ c = 0) : indep_set a b (μ [| c]) :=
 by rw [indep_set, indep, indep_sets]; intros; simp [hmc, h, measure_inter_null_of_null_left]
 
-def indep_sets_of_cond_null_measure (a b : set (set α)) (c : set α) (hmc : measurable_set c) (h : μ c = 0) : indep_sets a b (μ [| c]) :=
+lemma indep_sets_of_cond_null_measure (a b : set (set α)) (c : set α) (hmc : measurable_set c) (h : μ c = 0) : indep_sets a b (μ [| c]) :=
 by intros _ _ _ _; simp [hmc, h, measure_inter_null_of_null_left]
 
-def cond_indep_set_iff_cond_inter_irrel {a : set α} (hma : measurable_set a)
+lemma cond_indep_sets_univ_iff_indep_sets (s1 s2 : set (set α)) :
+  cond_indep_sets s1 s2 {set.univ} μ ↔ indep_sets s1 s2 μ :=
+by simp [cond_indep_sets]
+
+lemma cond_indep_univ_iff_indep_set (m₁ m₂ : measurable_space α) :
+  @cond_indep _ m₁ m₂ m {set.univ} μ ↔ @indep _ m₁ m₂ m μ :=
+by apply cond_indep_sets_univ_iff_indep_sets
+
+theorem cond_indep_set_iff_cond_inter_irrel {a : set α} (hma : measurable_set a)
   {b : set α} (hmb : measurable_set b) {c : set α} (hmc : measurable_set c) :
   cond_indep_set' a b c μ ↔ μ (c ∩ a) ≠ 0 → μ[b|c ∩ a] = μ[b|c] :=
 begin

@@ -13,17 +13,11 @@ end
 lemma supr_emptyset' {α β} [complete_lattice α] {f : subtype ∅ → α} :
   (⨆ x : (∅ : set β), f x) = ⊥ := by simp
 
-lemma forall_or_imp_iff {α} (p q r : α → Prop) (h : ∀ a, p a → r a) : (∀ a, (p a ∨ q a) → r a) ↔ (∀ a, q a → r a) :=
-begin
-  apply forall_congr,
-  intro a,
-  specialize h a,
-  finish
-end
+lemma union_subset_iff_right {α} (p q r : set α) (h : p ⊆ r) : p ∪ q ⊆ r ↔ q ⊆ r :=
+by rw set.union_subset_iff; exact and_iff_right h
 
--- TODO do I really need this?
-lemma forall_or_imp_iff' {α} (p q r : α → Prop) (h : ∀ a, p a → r a) : (∀ a, (q a ∨ p a) → r a) ↔ (∀ a, q a → r a) :=
-  by simp_rw or_comm; exact forall_or_imp_iff _ _ _ h
+lemma union_subset_iff_left {α} (p q r : set α) (h : q ⊆ r) : p ∪ q ⊆ r ↔ p ⊆ r :=
+by rw set.union_subset_iff; exact and_iff_left h
 
 noncomputable theory
 
@@ -228,17 +222,15 @@ begin
   have : @comap_subtype _ β _ ∅ = ⊥ :=
     by rw comap_subtype; convert @comap_bot _ _ (pi_subtype ∅); exact supr_emptyset',
   rw [this, ← bot_measurable_space_eq_bot],
-  have : cond_indep (comap_subtype A) (comap_subtype B) bot_measurable_space.measurable_set' (joint μ f)
-    ↔ cond_indep (comap_subtype A) (comap_subtype B) {set.univ} (joint μ f),
-  { refine forall_or_imp_iff _ _ _ _,
-    intros a ha, change _ = _ at ha, subst ha,
-    exact indep_sets_of_cond_null_measure _ _ _ _ measurable_set.empty (joint μ f).empty },
-  rw this,
-  sorry
+  refine iff.trans (iff.symm _) (union_subset_iff_right _ _ _ _).symm,
+  apply cond_indep_univ_iff_indep_set,
+  intros a ha, change _ = _ at ha, subst ha,
+  exact indep_sets_of_cond_null_measure _ _ _ _ measurable_set.empty (outer_measure.empty _),
 end
 
 lemma cond_empty_eq_marginal [is_probability_measure μ]
-  (A : set ι) : cond μ f A ∅ set.univ = marginal μ f A := sorry
+  (A : set ι) : cond μ f A ∅ set.univ = marginal μ f A := 
+by simp_rw [cond, pi_unsubtype_img, set.preimage_univ, cond_univ]
 
 theorem cond_independent_iff_cond_inter_irrel [is_probability_measure μ] (hm : ∀ i : ι, measurable (f i))
   (A B C : set ι) :
