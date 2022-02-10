@@ -1,4 +1,6 @@
 import measure_theory.measure.measure_space
+import measure_theory.constructions.pi
+import data.set.function
 import probability_theory.independence
 import probability_theory.conditional
 import probability_theory.pi_subtype
@@ -51,6 +53,10 @@ begin
   exact measurable_set.univ
 end
 
+lemma inter_of_generate_from_pi {ι : Type*} {α : ι → Type*} (C : Π i, set (set (α i))) (t : set (Π i, α i)) :
+  t ∈ set.pi set.univ '' set.pi set.univ (λ (i : ι), {s : set (α i) | C i s}) →
+  ∃ (f : Π i, set (α i)), (∀ i, C i (f i)) ∧ t = ⋂ i, (λ g, g i) ⁻¹' (f i) := sorry
+
 end measure_theory
 
 open measure_theory measure_theory.measure measurable_space
@@ -97,9 +103,23 @@ variables {α : Type*} [m : measurable_space α] (μ : measure α) {ι: Type*}
 
 section definitions
 
--- this one may take quite a bit of work, but assuming B ⊆ A should make it easier...
-lemma pi_set_to_subtype_img_meas {A B : set ι} {b : set (Π i : B, β i)} (hmb : measurable_set b)
-  : measurable_set (pi_set_to_subtype A B '' b) := sorry
+lemma pi_set_to_subtype_img_meas {A B : set ι} (hAB : B ⊆ A) {b : set (Π i : B, β i)} (hmb : measurable_set b)
+  : measurable_set (pi_set_to_subtype A B '' b) :=
+begin
+  change measurable_space.pi.measurable_set' b at hmb,
+  revert b,
+  -- TODO is there some way to do without this assumption? It would be annoying to have to propagate...
+  haveI : fintype ↥B := sorry,
+  refine induction_on_inter generate_from_pi.symm is_pi_system_pi _ _ _ _,
+  simp,
+  { intros t ht,
+    obtain ⟨f, hf, rfl⟩ := inter_of_generate_from_pi _ t ht,
+    rw inj_on.image_inter
+  },
+  intros _ _ hmt', have := measurable_set.compl hmt',
+  rwa set.image_compl_eq (pi_set_to_subtype_bijective hAB),
+  intros, rw set.image_Union, apply measurable_set.Union, assumption
+end
 
 def comap_subtype (S : set ι) :
   measurable_space (Π i : ι, β i) := measurable_space.comap (pi_subtype S) infer_instance
@@ -264,8 +284,8 @@ begin
       rw [pi_unsubtype_union_img_inter₁₂, set.inter_comm],
       assumption,
       refine measurable_set.inter _ _;
-      refine measurable_pi_subtype _ _;
-      exact pi_set_to_subtype_img_meas (by assumption) },
+      refine measurable_pi_subtype _ _; refine pi_set_to_subtype_img_meas _ (by assumption),
+      exact set.subset_union_left _ _, exact set.subset_union_right _ _ },
     { intros a hma b hmb c hmc,
       rw cond_indep_set_iff_cond_inter_irrel',
       intro hcmbc,
@@ -277,7 +297,8 @@ begin
       rwa [set.inter_comm, ← pi_unsubtype_union_img_inter₁₂],
       { refine measurable_set.inter _ _;
         refine measurable_pi_subtype _ _;
-        exact pi_set_to_subtype_img_meas (by assumption) },
+        refine pi_set_to_subtype_img_meas _ (by assumption),
+        exact set.subset_union_left _ _, exact set.subset_union_right _ _ },
       all_goals {exact measurable_pi_subtype _ (by assumption)} } },
   all_goals {exact comap_subtype_subset _}
 end

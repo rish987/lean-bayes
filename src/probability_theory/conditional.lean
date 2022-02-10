@@ -172,7 +172,6 @@ lemma cond_Indep_def {α ι} (m : ι → measurable_space α) [measurable_space 
   (C : set (set α)) (μ : measure α . volume_tac) :
   cond_Indep m C μ = ∀ c ∈ C, Indep m (μ[|c]) := rfl
 
-                                                 set_option pp.implicit true
 def cond_indep {α} (m₁ m₂ : measurable_space α) [measurable_space α] (C : set (set α))
   (μ : measure α . volume_tac) : Prop :=
 cond_indep_sets (m₁.measurable_set') (m₂.measurable_set') C μ

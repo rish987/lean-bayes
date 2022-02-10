@@ -24,6 +24,12 @@ def set_to_subtype {α : Type*} (A : set α) (B : set α) : set A := λ x : A, �
 def pi_set_to_subtype {α : Type*} {β : α → Type*} (A : set α) (B : set α)
   (f : Π i : B, β i) : Π i : set_to_subtype A B, β i := λ ⟨i, hi⟩, f ⟨i, hi⟩
 
+lemma pi_set_to_subtype_surjective {α : Type*} {β : α → Type*} (A : set α) (B : set α)
+  : function.surjective (@pi_set_to_subtype _ β A B) := sorry
+
+lemma pi_set_to_subtype_bijective {α : Type*} {β : α → Type*} {A : set α} {B : set α} (hAB : B ⊆ A)
+  : function.bijective (@pi_set_to_subtype _ β A B) := sorry
+
 @[reducible]
 def pi_unsubtype_set {α : Type*} {β : α → Type*} (A : set α) (B : set α) :
   set (Π i : B, β i) → set (Π i : A, β i)
@@ -31,6 +37,9 @@ def pi_unsubtype_set {α : Type*} {β : α → Type*} (A : set α) (B : set α) 
 
 notation `>>[`A`]` := pi_unsubtype_set A _
 notation `>>[]` := pi_unsubtype_set _ _
+
+def pi_unsubtype_set_same {α : Type*} {β : α → Type*} (A : set α) (a : set (Π i : A, β i)) :
+  >>[A] a = a := sorry
 
 -- TODO generalize to set-indexed version using `Union`
 @[reducible]
