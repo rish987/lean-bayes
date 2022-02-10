@@ -98,11 +98,11 @@ def cond_indep_sets_iff {α} [measurable_space α] (s1 s2 cs : set (set α))
 ------------
 
 variables {α : Type*} [m : measurable_space α] (μ : measure α) {ι: Type*}
-  {β : ι → Type*} [(Π i : ι, measurable_space (β i))] (f : Π i : ι, α → (β i))
+  {β : ι → Type*} (f : Π i : ι, α → (β i))
 
 section definitions
 
-lemma pi_set_to_subtype_img_meas {A B : set ι} (hAB : B ⊆ A) {b : set (Π i : B, β i)} (hmb : measurable_set b)
+lemma pi_set_to_subtype_img_meas [mm : Π i : ι, measurable_space (β i)] {A B : set ι} (hAB : B ⊆ A) {b : set (Π i : B, β i)} (hmb : measurable_set b)
   : measurable_set (pi_set_to_subtype A B '' b) :=
 begin
   change measurable_space.pi.measurable_set' b at hmb,
@@ -117,7 +117,13 @@ begin
     obtain ⟨f, hf, rfl⟩ := inter_of_generate_from_pi _ t ht,
     rw set.inj_on.image_Inter_eq (sorry),
     refine measurable_set.Inter _,
-    sorry,
+    intro,
+    rw pi_set_to_subtype_img_preimage_idx hAB,
+    have x : ((mm b).comap (λ g : Π (i : set_to_subtype A B), β i, g ⟨⟨b, hAB b.property⟩, b.property⟩)).measurable_set' ((λ (g : Π (i : set_to_subtype A B), β i), g ⟨⟨b, hAB b.property⟩, b.property⟩) ⁻¹' f b) := ⟨f b, hf b, rfl⟩,
+    have y := le_supr (λ i : set_to_subtype A B, (mm i).comap (λ g : Π (i : set_to_subtype A B), β i, g i)) ⟨⟨b, hAB b.property⟩, b.property⟩,
+    -- why????
+    change set.subset _ _ at y,
+    exact y x,
     assumption
   },
   intros _ _ hmt', have := measurable_set.compl hmt',
@@ -125,6 +131,8 @@ begin
   intros, rw set.image_Union, apply measurable_set.Union, assumption,
   sorry
 end
+
+variables [Π i : ι, measurable_space (β i)]
 
 def comap_subtype (S : set ι) :
   measurable_space (Π i : ι, β i) := measurable_space.comap (pi_subtype S) infer_instance
@@ -154,8 +162,12 @@ def marginalization (μ : measure (Π i : ι, β i)) (mv : set ι) :
 
 end definitions
 
+variables [Π i : ι, measurable_space (β i)]
+
 section marginal
-variable (hm : ∀ i : ι, measurable (f i))
+
+variables [Π i : ι, measurable_space (β i)] (hm : ∀ i : ι, measurable (f i))
+
 include hm
 
 lemma marginal_eq_marginalization_aux (mv : set ι) :

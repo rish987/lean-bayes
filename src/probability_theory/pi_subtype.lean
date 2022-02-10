@@ -30,6 +30,23 @@ lemma pi_set_to_subtype_surjective {α : Type*} {β : α → Type*} (A : set α)
 lemma pi_set_to_subtype_bijective {α : Type*} {β : α → Type*} {A : set α} {B : set α} (hAB : B ⊆ A)
   : function.bijective (@pi_set_to_subtype _ β A B) := sorry
 
+lemma pi_set_to_subtype_img_preimage_idx {α : Type*} {β : α → Type*} {A : set α} {B : set α} (hAB : B ⊆ A) {b : B} (bs : set (β b)) :
+pi_set_to_subtype A B '' ((λ (g : Π (i : B), β i), g b) ⁻¹' bs)
+= (λ (g : Π (i : set_to_subtype A B), β i), g ⟨⟨b, hAB b.property⟩, b.property⟩) ⁻¹' bs :=
+begin
+  ext1 x,
+  split,
+  rintro ⟨bs', hbs', hbsx'⟩,
+  change bs' _ ∈ bs at hbs',
+  change _ ∈ bs,
+  subst hbsx',
+  change bs' ⟨_, _⟩ ∈ _,
+  convert hbs',
+  exact subtype.eq rfl,
+  intro hx,
+  refine ⟨λ b : B, x ⟨⟨b, hAB b.property⟩, b.property⟩, hx, _⟩, ext ⟨⟨_, _⟩, _⟩, refl
+end
+
 @[reducible]
 def pi_unsubtype_set {α : Type*} {β : α → Type*} (A : set α) (B : set α) :
   set (Π i : B, β i) → set (Π i : A, β i)
