@@ -1,6 +1,5 @@
 import measure_theory.measure.measure_space
 import measure_theory.constructions.pi
-import data.set.function
 import probability_theory.independence
 import probability_theory.conditional
 import probability_theory.pi_subtype
@@ -110,15 +109,21 @@ begin
   revert b,
   -- TODO is there some way to do without this assumption? It would be annoying to have to propagate...
   haveI : fintype ↥B := sorry,
+  haveI : encodable ↥B := sorry,
+  by_cases nonempty ↥B,
   refine induction_on_inter generate_from_pi.symm is_pi_system_pi _ _ _ _,
   simp,
   { intros t ht,
     obtain ⟨f, hf, rfl⟩ := inter_of_generate_from_pi _ t ht,
-    rw inj_on.image_inter
+    rw set.inj_on.image_Inter_eq (sorry),
+    refine measurable_set.Inter _,
+    sorry,
+    assumption
   },
   intros _ _ hmt', have := measurable_set.compl hmt',
   rwa set.image_compl_eq (pi_set_to_subtype_bijective hAB),
-  intros, rw set.image_Union, apply measurable_set.Union, assumption
+  intros, rw set.image_Union, apply measurable_set.Union, assumption,
+  sorry
 end
 
 def comap_subtype (S : set ι) :
