@@ -64,7 +64,7 @@ end
 
 lemma inter_of_generate_from_pi {ι : Type*} {α : ι → Type*} (C : Π i, set (set (α i))) (t : set (Π i, α i)) :
   t ∈ set.pi set.univ '' set.pi set.univ (λ (i : ι), {s : set (α i) | C i s}) →
-  ∃ (f : Π i, set (α i)), (∀ i, C i (f i)) ∧ t = ⋂ i, (λ g, g i) ⁻¹' (f i) :=
+  ∃ (f : Π i, set (α i)), (∀ i, C i (f i)) ∧ t = ⋂ i, function.eval i ⁻¹' (f i) :=
 begin
   classical,
   rintro ⟨t', ht1', ht2'⟩,
@@ -139,14 +139,14 @@ begin
   change measurable_space.pi.measurable_set' b at hmb,
   revert b,
   -- TODO is there some way to do without this assumption? It would be annoying to have to propagate...
-  haveI : fintype ↥B := sorry,
-  haveI : encodable ↥B := sorry,
+  haveI : fintype B := sorry,
+  haveI := fintype.encodable B,
   by_cases nonempty ↥B,
   { refine induction_on_inter generate_from_pi.symm is_pi_system_pi _ _ _ _,
     simp,
     { intros t ht,
       obtain ⟨f, hf, rfl⟩ := inter_of_generate_from_pi _ t ht,
-      rw set.inj_on.image_Inter_eq (sorry),
+      rw set.inj_on.image_Inter_eq (set.inj_on_of_injective (pi_set_to_subtype_bijective hAB).injective _),
       refine measurable_set.Inter _,
       intro,
       rw pi_set_to_subtype_img_preimage_idx hAB,
@@ -155,25 +155,32 @@ begin
       -- why????
       change set.subset _ _ at y,
       exact y x,
-      assumption
-    },
+      assumption },
     intros _ _ hmt', have := measurable_set.compl hmt',
     rwa set.image_compl_eq (pi_set_to_subtype_bijective hAB),
     intros, rw set.image_Union, apply measurable_set.Union, assumption },
-  sorry
+  haveI : subsingleton (Π i : B, β i) := ⟨λ f g, by ext x; exact absurd (nonempty.intro x) h⟩,
+  refine subsingleton.set_cases _ _; intro hmc,
+  rw set.image_empty, exact measurable_set.empty,
+  rw set.image_univ_of_surjective (pi_set_to_subtype_surjective _ _), exact measurable_set.univ
 end
 
 variables [Π i : ι, measurable_space (β i)]
 
 def comap_subtype (S : set ι) :
-  measurable_space (Π i : ι, β i) := measurable_space.comap (pi_subtype S) infer_instance
+  measurable_space (Π i : ι, β i) := measurable_space.comap (pi_subtype S) measurable_space.pi
 
 lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
   (∀ x, (comap_subtype A).measurable_set' x → P x)
   ↔ (∀ x, measurable_set x → P (>[A] x)) := set.maps_image_to _ _ _ _
 
 lemma comap_subtype_subset (A : set ι) :
-  {x | (@comap_subtype _ β _ A).measurable_set' x} ⊆ measurable_set := sorry
+  @comap_subtype _ β _ A ≤ measurable_space.pi :=
+begin
+  simp_rw [comap_subtype, measurable_space.pi, measurable_space.comap_supr,
+    measurable_space.comap_comp, function.comp, pi_subtype],
+  exact supr_le_supr2 (λ i, ⟨i, le_rfl⟩)
+end
 
 /-- The joint distribution induced by an indexed family of random variables `f`. -/
 def joint : measure (Π i : ι, β i) := map (λ a i, f i a) μ
@@ -181,7 +188,7 @@ def joint : measure (Π i : ι, β i) := map (λ a i, f i a) μ
 instance [is_probability_measure μ] : is_probability_measure (joint μ f) := sorry
 
 /-- The marginal distribution induced by an indexed family of random variables `f`
-restriced to a subset of "marginalizing variable" indices `mv` (represented as
+restricted to a subset of "marginalizing variable" indices `mv` (represented as
 an index subtype). -/
 def marginal (mv : set ι) : measure (Π i : mv, β i) := joint μ (pi_subtype mv f)
 
