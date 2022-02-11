@@ -20,6 +20,16 @@ by rw set.union_subset_iff; exact and_iff_right h
 lemma union_subset_iff_left {α} (p q r : set α) (h : q ⊆ r) : p ∪ q ⊆ r ↔ p ⊆ r :=
 by rw set.union_subset_iff; exact and_iff_left h
 
+lemma pi_Inter_distrib {ι ι': Type*} {α : ι → Type*} {s : set ι} {t : ι' → Π i, set (α i)} :
+  s.pi (λ i, ⋂ i', t i' i) = ⋂ i', s.pi (t i') :=
+begin
+  ext x,
+  simp only [set.mem_pi, set.mem_Inter],
+  have : (∀ i ∈ s, ∀ i', x i ∈ t i' i) ↔ (∀ i', ∀ i ∈ s, x i ∈ t i' i)
+    := ⟨(λ h i' i hi, h i hi i'), (λ h i hi i', h i' i hi)⟩,
+  rw this
+end
+
 noncomputable theory
 
 namespace measure_theory
@@ -54,7 +64,28 @@ end
 
 lemma inter_of_generate_from_pi {ι : Type*} {α : ι → Type*} (C : Π i, set (set (α i))) (t : set (Π i, α i)) :
   t ∈ set.pi set.univ '' set.pi set.univ (λ (i : ι), {s : set (α i) | C i s}) →
-  ∃ (f : Π i, set (α i)), (∀ i, C i (f i)) ∧ t = ⋂ i, (λ g, g i) ⁻¹' (f i) := sorry
+  ∃ (f : Π i, set (α i)), (∀ i, C i (f i)) ∧ t = ⋂ i, (λ g, g i) ⁻¹' (f i) :=
+begin
+  classical,
+  rintro ⟨t', ht1', ht2'⟩,
+  refine ⟨t', λ i, ht1' i (set.mem_univ i), _⟩,
+  subst ht2',
+  let ft' := λ i, (function.update (λ j : ι, (set.univ : set (α j))) i (t' i)),
+  have : t' = λ i, ⋂ i', ft' i' i,
+  { ext1 i,
+    have : (⋂ (i' : ι), ft' i' i ) = ft' i i,
+    refine infi_eq_of_forall_ge_of_forall_gt_exists_lt _ (λ _ h, ⟨i, h⟩),
+    { intro i',
+      by_cases i = i',
+      subst h, exact le_refl _,
+      have : ft' i' i = set.univ, { exact dif_neg h },
+      rw this, finish },
+    rw this, exact eq.symm (dif_pos rfl) },
+  rw [this, pi_Inter_distrib],
+  congr, ext1 i',
+  simp_rw (congr_fun this i').symm,
+  exact set.univ_pi_update_univ _ _
+end
 
 end measure_theory
 
@@ -111,24 +142,24 @@ begin
   haveI : fintype ↥B := sorry,
   haveI : encodable ↥B := sorry,
   by_cases nonempty ↥B,
-  refine induction_on_inter generate_from_pi.symm is_pi_system_pi _ _ _ _,
-  simp,
-  { intros t ht,
-    obtain ⟨f, hf, rfl⟩ := inter_of_generate_from_pi _ t ht,
-    rw set.inj_on.image_Inter_eq (sorry),
-    refine measurable_set.Inter _,
-    intro,
-    rw pi_set_to_subtype_img_preimage_idx hAB,
-    have x : ((mm b).comap (λ g : Π (i : set_to_subtype A B), β i, g ⟨⟨b, hAB b.property⟩, b.property⟩)).measurable_set' ((λ (g : Π (i : set_to_subtype A B), β i), g ⟨⟨b, hAB b.property⟩, b.property⟩) ⁻¹' f b) := ⟨f b, hf b, rfl⟩,
-    have y := le_supr (λ i : set_to_subtype A B, (mm i).comap (λ g : Π (i : set_to_subtype A B), β i, g i)) ⟨⟨b, hAB b.property⟩, b.property⟩,
-    -- why????
-    change set.subset _ _ at y,
-    exact y x,
-    assumption
-  },
-  intros _ _ hmt', have := measurable_set.compl hmt',
-  rwa set.image_compl_eq (pi_set_to_subtype_bijective hAB),
-  intros, rw set.image_Union, apply measurable_set.Union, assumption,
+  { refine induction_on_inter generate_from_pi.symm is_pi_system_pi _ _ _ _,
+    simp,
+    { intros t ht,
+      obtain ⟨f, hf, rfl⟩ := inter_of_generate_from_pi _ t ht,
+      rw set.inj_on.image_Inter_eq (sorry),
+      refine measurable_set.Inter _,
+      intro,
+      rw pi_set_to_subtype_img_preimage_idx hAB,
+      have x : ((mm b).comap (λ g : Π (i : set_to_subtype A B), β i, g ⟨⟨b, hAB b.property⟩, b.property⟩)).measurable_set' ((λ (g : Π (i : set_to_subtype A B), β i), g ⟨⟨b, hAB b.property⟩, b.property⟩) ⁻¹' f b) := ⟨f b, hf b, rfl⟩,
+      have y := le_supr (λ i : set_to_subtype A B, (mm i).comap (λ g : Π (i : set_to_subtype A B), β i, g i)) ⟨⟨b, hAB b.property⟩, b.property⟩,
+      -- why????
+      change set.subset _ _ at y,
+      exact y x,
+      assumption
+    },
+    intros _ _ hmt', have := measurable_set.compl hmt',
+    rwa set.image_compl_eq (pi_set_to_subtype_bijective hAB),
+    intros, rw set.image_Union, apply measurable_set.Union, assumption },
   sorry
 end
 
