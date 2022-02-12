@@ -20,6 +20,8 @@ by rw set.union_subset_iff; exact and_iff_right h
 lemma union_subset_iff_left {α} (p q r : set α) (h : q ⊆ r) : p ∪ q ⊆ r ↔ p ⊆ r :=
 by rw set.union_subset_iff; exact and_iff_left h
 
+example {α β : Type*} (f : α → β) (hf : function.surjective f) (b b' : set β) (hi : f ⁻¹' b = f ⁻¹' b') : b = b' := by library_search
+
 lemma pi_Inter_distrib {ι ι': Type*} {α : ι → Type*} {s : set ι} {t : ι' → Π i, set (α i)} :
   s.pi (λ i, ⋂ i', t i' i) = ⋂ i', s.pi (t i') :=
 begin
@@ -195,7 +197,11 @@ lemma pi_set_to_subtype_img_meas'' {A B : set ι} (hAB : B ⊆ A) :
   (@measurable_space.pi ↥B _ _).map (@pi_set_to_subtype _ β A B) = (@measurable_space.pi (set_to_subtype A B) _ _) := 
 begin
   rw pi_set_to_subtype_img_meas' hAB,
-  sorry
+  ext s,
+  split,
+  { rintro ⟨s', hms', hs'⟩,
+    rwa (set.preimage_eq_preimage (pi_set_to_subtype_bijective hAB).surjective).mp hs' at hms' },
+  intro h, exact ⟨s, h, rfl⟩
 end
 
 /-- The joint distribution induced by an indexed family of random variables `f`. -/
