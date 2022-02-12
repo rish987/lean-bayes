@@ -229,10 +229,10 @@ lemma marginal_cond_meas_of_joint (mv : set ι)
   marginal μ f mv s ≠ 0 := sorry
 
 lemma marginal_cond_meas_of_joint_inter {A B : set ι} {a : set (Π i : A, β i)} {b : set (Π i : B, β i)}
-  (hjc : joint μ f (>[] a ∩ >[] b) ≠ 0) : marginal μ f _ (>₁[] a ∩ >₂[] b) ≠ 0 := sorry
+  (hjc : joint μ f (>[] a ∩ >[] b) ≠ 0) : marginal μ f _ (>>[A ∪ B] a ∩ >>[] b) ≠ 0 := sorry
 
 lemma joint_cond_meas_of_marginal_inter {A B : set ι} {a : set (Π i : A, β i)} {b : set (Π i : B, β i)}
-  (hmc : marginal μ f _ (>₁[] a ∩ >₂[] b) ≠ 0) : joint μ f (>[] a ∩ >[] b) ≠ 0 := sorry
+  (hmc : marginal μ f _ (>>[A ∪ B] a ∩ >>[] b) ≠ 0) : joint μ f (>[] a ∩ >[] b) ≠ 0 := sorry
 
 end marginal
 
@@ -309,8 +309,8 @@ theorem cond_independent_iff_cond_inter_irrel [is_probability_measure μ] (hm : 
   (A B C : set ι) :
   cond_independent μ f A B C ↔ ∀ (b : set (Π i : B, β i)) (hmb : measurable_set b)
   (c : set (Π i : C, β i)) (hmc : measurable_set c),
-  marginal μ f (B ∪ C) (>₁[] b ∩ >₂[] c) ≠ 0
-  → cond μ f A (B ∪ C) (>₁[] b ∩ >₂[] c) = cond μ f A C c :=
+  marginal μ f (B ∪ C) (>>[] b ∩ >>[] c) ≠ 0
+  → cond μ f A (B ∪ C) (>>[] b ∩ >>[] c) = cond μ f A C c :=
 begin
   rw [cond_independent, cond_indep, cond_indep_sets_iff],
   { -- FIXME this is just to pattern-match, can I avoid this somehow?
@@ -321,8 +321,8 @@ begin
       → cond_indep_set' a b c (joint μ f))
       ↔ ∀ (b : set (Π (i : ↥B), β ↑i)) (hmb : measurable_set b)
       (c : set (Π (i : ↥C), β ↑i)) (hmc : measurable_set c),
-      marginal μ f (B ∪ C) (>₁[] b ∩ >₂[] c) ≠ 0
-      → cond μ f A (B ∪ C) (>₁[] b ∩ >₂[] c) = cond μ f A C c,
+      marginal μ f (B ∪ C) (>>[] b ∩ >>[] c) ≠ 0
+      → cond μ f A (B ∪ C) (>>[] b ∩ >>[] c) = cond μ f A C c,
     simp_rw comap_subtype_ext,
     conv in (cond _ _ _ _ _ = cond _ _ _ _ _) { rw measure.ext_iff },
     split; intro h,
@@ -334,7 +334,7 @@ begin
       convert (cond_indep_set_iff_cond_inter_irrel (joint μ f) _ _ _).mp
         (cond_indep_set'.symm (h _ hma _ hmb _ hmc)) _;
       try {exact measurable_pi_subtype _ (by assumption)},
-      rw [pi_unsubtype_union_img_inter₁₂, set.inter_comm],
+      rw [pi_unsubtype_union_img_inter, set.inter_comm],
       assumption,
       refine measurable_set.inter _ _;
       refine measurable_pi_subtype _ _; refine pi_set_to_subtype_img_meas _ (by assumption),
@@ -343,11 +343,11 @@ begin
       rw cond_indep_set_iff_cond_inter_irrel',
       intro hcmbc,
       rw set.inter_comm at hcmbc,
-      have : marginal μ f _ (>₁[] b ∩ >₂[] c) ≠ 0 
+      have : marginal μ f _ (>>[] b ∩ >>[] c) ≠ 0 
         := marginal_cond_meas_of_joint_inter _ _ hm hcmbc,
       have := h b _ c _ _ a hma; try {assumption},
       rw [cond_def, cond_def] at this; try {assumption},
-      rwa [set.inter_comm, ← pi_unsubtype_union_img_inter₁₂],
+      rwa [set.inter_comm, ← pi_unsubtype_union_img_inter],
       { refine measurable_set.inter _ _;
         refine measurable_pi_subtype _ _;
         refine pi_set_to_subtype_img_meas _ (by assumption),
@@ -368,24 +368,23 @@ begin
   haveI : subsingleton (Π i : (∅ : set ι), β i) := ⟨λ f g, by ext ⟨x, hx⟩; exact false.elim hx⟩,
   have h1 : ⇑(marginal μ f (B ∪ ∅)) == ⇑(marginal μ f B) := by rw set.union_empty,
   have h2 : cond μ f A (B ∪ ∅) == cond μ f A B := by rw set.union_empty,
-  have h3 : >₁[B,∅] b == b := begin
-    rw [pi_unsubtype_union_img₁, set.union_empty],
+  have h3 : >>[B ∪ ∅] b == b := begin
+    rw [set.union_empty],
     refine heq_of_eq _,
     exact pi_unsubtype_set_same _ _
   end,
-  have : (marginal μ f (B ∪ ∅) (>₁[] b ∩ >₂[] set.univ) ≠ 0
-    → cond μ f A (B ∪ ∅) (>₁[] b ∩ >₂[] set.univ) = cond μ f A ∅ set.univ)
+  have : (marginal μ f (B ∪ ∅) (>>[] b ∩ >>[] (set.univ : set (Π (i : (∅ : set ι)), β i))) ≠ 0
+    → cond μ f A (B ∪ ∅) (>>[] b ∩ >>[] (set.univ : set (Π (i : (∅ : set ι)), β i))) = cond μ f A ∅ set.univ)
     ↔ (marginal μ f B b ≠ 0 → cond μ f A B b = marginal μ f A),
-  { simp_rw [pi_unsubtype_union_img₂, pi_unsubtype_set, pi_unsubtype_img,
-      set.image_univ_of_surjective 
-        (pi_set_to_subtype_bijective (set.subset_union_right _ _)).surjective,
+  { simp_rw [pi_unsubtype_set, pi_unsubtype_img,
+      set.image_univ_of_surjective (pi_set_to_subtype_bijective (set.subset_union_right _ _)).surjective,
       set.preimage_univ, set.inter_univ],
     rw heq_congr (by rw set.union_empty) h1 h3,
     rw heq_congr (by rw set.union_empty) h2 h3,
     rw cond_empty_eq_marginal },
   split; intro h,
   { refine subsingleton.set_cases _ _; intro hmc,
-    simp_rw [pi_unsubtype_union_img₂, pi_unsubtype_set, pi_unsubtype_img],
+    simp_rw [pi_unsubtype_set, pi_unsubtype_img],
     simp_rw [set.image_empty, set.preimage_empty, set.inter_empty],
     intro h', exact absurd (outer_measure.empty' _) h',
     rwa this },
