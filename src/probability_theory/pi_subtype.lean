@@ -51,7 +51,7 @@ begin
     ext i,
     rw pi_set_to_subtype_def',
     congr,
-    refine subtype.eq _, refine subtype.eq _, refl },
+    refine subtype.eq _, refine subtype.eq rfl },
 end
 
 lemma pi_set_to_subtype_img_preimage_idx {α : Type*} {β : α → Type*} {A : set α} {B : set α} (hAB : B ⊆ A) {b : B} (bs : set (β b)) :
@@ -80,7 +80,18 @@ notation `>>[`A`]` := pi_unsubtype_set A _
 notation `>>[]` := pi_unsubtype_set _ _
 
 def pi_unsubtype_set_same {α : Type*} {β : α → Type*} (A : set α) (a : set (Π i : A, β i)) :
-  >>[A] a = a := sorry
+  >>[A] a = a :=
+begin
+  rw pi_unsubtype_set,
+  rw pi_unsubtype_img,
+  change (_ ⁻¹' (_ '' a)) = a,
+  -- TODO extract
+  convert @set.preimage_image_eq _ _ (@pi_set_to_subtype _ β A A) a (pi_set_to_subtype_bijective rfl.subset).injective,
+  ext f i,
+  rw pi_set_to_subtype_def',
+  change f _ = _,
+  congr, refine subtype.eq rfl
+end
 
 -- TODO generalize to set-indexed version using `Union`
 @[reducible]
@@ -91,11 +102,12 @@ def pi_unsubtype_union_img₁ {α : Type*} {β : α → Type*} (A : set α) (B :
 def pi_unsubtype_union_img₂ {α : Type*} {β : α → Type*} (A : set α) (B : set α) :
   set (Π i : B, β i) → set (Π i : A ∪ B, β i) := λ g, >>[A ∪ B] g
 
-lemma pi_subtype_ext' {α : Type*} {β : α → Type*} {A : set α}
-{f : Π i, β i} {g : Π i : A, β i} : pi_subtype A f = g ↔ ∀ i : A, f i = g i := sorry
+lemma pi_subtype_ext {α : Type*} {β : α → Type*} {A : set α}
+{f : Π i, β i} {g : Π i : A, β i} : pi_subtype A f = g ↔ ∀ i : A, f i = g i :=
+by rw function.funext_iff; refl
 
-lemma pi_subtype_ext {α : Type*} {β : α → Type*} {A : set α} {f g : Π i, β i} :
-pi_subtype A f = pi_subtype A g ↔ ∀ i ∈ A, f i = g i := sorry
+--lemma pi_subtype_ext' {α : Type*} {β : α → Type*} {A : set α} {f g : Π i, β i} :
+--pi_subtype A f = pi_subtype A g ↔ ∀ i ∈ A, f i = g i := sorry
 
 notation `>₁[`A`,`B`]` := pi_unsubtype_union_img₁ A B
 notation `>₂[`A`,`B`]` := pi_unsubtype_union_img₂ A B
@@ -119,7 +131,7 @@ begin
     refine ⟨y, _, _⟩,
     change pi_subtype A y ∈ sb,
     convert h',
-    all_goals {refine pi_subtype_ext'.mpr _, rintro ⟨i, hi⟩},
+    all_goals {refine pi_subtype_ext.mpr _, rintro ⟨i, hi⟩},
       exact dif_pos hi,
     by_cases hi' : i ∈ A,
       convert dif_pos hi',
@@ -143,7 +155,7 @@ begin
     refine ⟨y, _, _⟩,
     change pi_subtype B y ∈ sb,
     convert h',
-    all_goals {refine pi_subtype_ext'.mpr _, rintro ⟨i, hi⟩},
+    all_goals {refine pi_subtype_ext.mpr _, rintro ⟨i, hi⟩},
       exact dif_pos hi,
     by_cases hi' : i ∈ B,
       convert dif_pos hi',
@@ -164,7 +176,7 @@ begin
   { obtain ⟨_, h', h⟩ := h,
     change pi_subtype B x ∈ sb,
     convert h',
-    refine pi_subtype_ext'.mpr _,
+    refine pi_subtype_ext.mpr _,
     rintro ⟨_, hi⟩,
     exact (congr_fun h ⟨⟨_, hba hi⟩, _⟩).symm }
 end
