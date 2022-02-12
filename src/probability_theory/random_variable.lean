@@ -20,8 +20,6 @@ by rw set.union_subset_iff; exact and_iff_right h
 lemma union_subset_iff_left {α} (p q r : set α) (h : q ⊆ r) : p ∪ q ⊆ r ↔ p ⊆ r :=
 by rw set.union_subset_iff; exact and_iff_left h
 
-example {α β : Type*} (f : α → β) (hf : function.surjective f) (b b' : set β) (hi : f ⁻¹' b = f ⁻¹' b') : b = b' := by library_search
-
 lemma pi_Inter_distrib {ι ι': Type*} {α : ι → Type*} {s : set ι} {t : ι' → Π i, set (α i)} :
   s.pi (λ i, ⋂ i', t i' i) = ⋂ i', s.pi (t i') :=
 begin
