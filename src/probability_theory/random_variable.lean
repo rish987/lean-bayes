@@ -135,38 +135,6 @@ variables {α : Type*} [m : measurable_space α] (μ : measure α) {ι: Type*}
 
 section definitions
 
-lemma pi_set_to_subtype_img_meas [mm : Π i : ι, measurable_space (β i)] {A B : set ι} (hAB : B ⊆ A) {b : set (Π i : B, β i)} (hmb : measurable_set b)
-  : measurable_set (pi_set_to_subtype A B '' b) :=
-begin
-  change measurable_space.pi.measurable_set' b at hmb,
-  revert b,
-  -- TODO is there some way to do without this assumption? It would be annoying to have to propagate...
-  haveI : fintype B := sorry,
-  haveI := fintype.encodable B,
-  by_cases nonempty ↥B,
-  { refine induction_on_inter generate_from_pi.symm is_pi_system_pi _ _ _ _,
-    simp,
-    { intros t ht,
-      obtain ⟨f, hf, rfl⟩ := inter_of_generate_from_pi _ t ht,
-      rw set.inj_on.image_Inter_eq (set.inj_on_of_injective (pi_set_to_subtype_bijective hAB).injective _),
-      refine measurable_set.Inter _,
-      intro,
-      rw pi_set_to_subtype_img_preimage_idx hAB,
-      have x : ((mm b).comap (λ g : Π (i : set_to_subtype A B), β i, g ⟨⟨b, hAB b.property⟩, b.property⟩)).measurable_set' ((λ (g : Π (i : set_to_subtype A B), β i), g ⟨⟨b, hAB b.property⟩, b.property⟩) ⁻¹' f b) := ⟨f b, hf b, rfl⟩,
-      have y := le_supr (λ i : set_to_subtype A B, (mm i).comap (λ g : Π (i : set_to_subtype A B), β i, g i)) ⟨⟨b, hAB b.property⟩, b.property⟩,
-      -- why????
-      change set.subset _ _ at y,
-      exact y x,
-      assumption },
-    intros _ _ hmt', have := measurable_set.compl hmt',
-    rwa set.image_compl_eq (pi_set_to_subtype_bijective hAB),
-    intros, rw set.image_Union, apply measurable_set.Union, assumption },
-  haveI : subsingleton (Π i : B, β i) := ⟨λ f g, by ext x; exact absurd (nonempty.intro x) h⟩,
-  refine subsingleton.set_cases _ _; intro hmc,
-  rw set.image_empty, exact measurable_set.empty,
-  rw set.image_univ_of_surjective (pi_set_to_subtype_surjective _ _), exact measurable_set.univ
-end
-
 variables [Π i : ι, measurable_space (β i)]
 
 def comap_subtype (S : set ι) :
@@ -184,7 +152,7 @@ begin
   exact supr_le_supr2 (λ i, ⟨i, le_rfl⟩)
 end
 
-lemma pi_set_to_subtype_img_meas' {A B : set ι} (hAB : B ⊆ A) :
+lemma pi_set_to_subtype_img_meas₁ {A B : set ι} (hAB : B ⊆ A) :
   @measurable_space.pi ↥B _ _ = (@measurable_space.pi (set_to_subtype A B) _ _).comap (@pi_set_to_subtype _ β A B) :=
 begin
   simp_rw [measurable_space.pi, comap_supr, comap_comp, function.comp],
@@ -193,15 +161,24 @@ begin
   congr, exact subtype.eq rfl, congr
 end
 
-lemma pi_set_to_subtype_img_meas'' {A B : set ι} (hAB : B ⊆ A) :
-  (@measurable_space.pi ↥B _ _).map (@pi_set_to_subtype _ β A B) = (@measurable_space.pi (set_to_subtype A B) _ _) := 
+lemma pi_set_to_subtype_img_meas₂ {A B : set ι} (hAB : B ⊆ A) :
+  (@measurable_space.pi B _ _).map (@pi_set_to_subtype _ β A B) = (@measurable_space.pi (set_to_subtype A B) _ _) := 
 begin
-  rw pi_set_to_subtype_img_meas' hAB,
+  rw pi_set_to_subtype_img_meas₁ hAB,
   ext s,
   split,
   { rintro ⟨s', hms', hs'⟩,
     rwa (set.preimage_eq_preimage (pi_set_to_subtype_bijective hAB).surjective).mp hs' at hms' },
   intro h, exact ⟨s, h, rfl⟩
+end
+
+lemma pi_set_to_subtype_img_meas {A B : set ι} (hAB : B ⊆ A) {b : set (Π i : B, β i)} (hmb : measurable_set b)
+  : measurable_set (pi_set_to_subtype A B '' b) :=
+begin
+  change measurable_space.pi.measurable_set' (pi_set_to_subtype A B '' b),
+  rw ← pi_set_to_subtype_img_meas₂ hAB,
+  change measurable_set (pi_set_to_subtype A B ⁻¹' (pi_set_to_subtype A B '' b)),
+  rwa set.preimage_image_eq _ (pi_set_to_subtype_bijective hAB).injective
 end
 
 /-- The joint distribution induced by an indexed family of random variables `f`. -/
