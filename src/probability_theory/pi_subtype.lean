@@ -28,11 +28,31 @@ lemma pi_set_to_subtype_def {α : Type*} {β : α → Type*} (A : set α) (B : s
   (f : Π i : B, β i) (i : α) (hi : i ∈ A) (hi' : i ∈ B) :
   pi_set_to_subtype A B f ⟨⟨i, hi⟩, hi'⟩ = f ⟨↑(⟨i, hi⟩ : A), hi'⟩ := rfl
 
-lemma pi_set_to_subtype_surjective {α : Type*} {β : α → Type*} (A : set α) (B : set α)
-  : function.surjective (@pi_set_to_subtype _ β A B) := sorry
+lemma pi_set_to_subtype_def' {α : Type*} {β : α → Type*} (A : set α) (B : set α)
+  (f : Π i : B, β i) (i : set_to_subtype A B) :
+  pi_set_to_subtype A B f i = f ⟨↑(⟨i.val.val, i.val.property⟩ : A), i.property⟩ :=
+begin
+  obtain ⟨⟨_, _⟩, _⟩ := i,
+  rw pi_set_to_subtype_def,
+end
 
 lemma pi_set_to_subtype_bijective {α : Type*} {β : α → Type*} {A : set α} {B : set α} (hAB : B ⊆ A)
-  : function.bijective (@pi_set_to_subtype _ β A B) := sorry
+  : function.bijective (@pi_set_to_subtype _ β A B) :=
+begin
+  constructor,
+  { intros f f' hff',
+    have h := congr_fun hff',
+    simp_rw pi_set_to_subtype_def' at h,
+    ext i,
+    specialize h ⟨⟨i, hAB i.property⟩, i.property⟩,
+    convert h; exact subtype.eq rfl },
+  { intro f,
+    refine ⟨(λ i, f ⟨⟨i, hAB i.property⟩, i.property⟩), _⟩,
+    ext i,
+    rw pi_set_to_subtype_def',
+    congr,
+    refine subtype.eq _, refine subtype.eq _, refl },
+end
 
 lemma pi_set_to_subtype_img_preimage_idx {α : Type*} {β : α → Type*} {A : set α} {B : set α} (hAB : B ⊆ A) {b : B} (bs : set (β b)) :
 pi_set_to_subtype A B '' ((λ (g : Π (i : B), β i), g b) ⁻¹' bs)

@@ -165,6 +165,7 @@ lemma pi_set_to_subtype_img_meas₂ {A B : set ι} (hAB : B ⊆ A) :
   (@measurable_space.pi B _ _).map (@pi_set_to_subtype _ β A B) = (@measurable_space.pi (set_to_subtype A B) _ _) := 
 begin
   rw pi_set_to_subtype_img_meas₁ hAB,
+  -- TODO make lemma for general map_comap_surjective
   ext s,
   split,
   { rintro ⟨s', hms', hs'⟩,
@@ -378,7 +379,9 @@ begin
     → cond μ f A (B ∪ ∅) (>₁[] b ∩ >₂[] set.univ) = cond μ f A ∅ set.univ)
     ↔ (marginal μ f B b ≠ 0 → cond μ f A B b = marginal μ f A),
   { simp_rw [pi_unsubtype_union_img₂, pi_unsubtype_set, pi_unsubtype_img,
-      set.image_univ_of_surjective (pi_set_to_subtype_surjective _ _), set.preimage_univ, set.inter_univ],
+      set.image_univ_of_surjective 
+        (pi_set_to_subtype_bijective (set.subset_union_right _ _)).surjective,
+      set.preimage_univ, set.inter_univ],
     rw heq_congr (by rw set.union_empty) h1 h3,
     rw heq_congr (by rw set.union_empty) h2 h3,
     rw cond_empty_eq_marginal },
