@@ -24,6 +24,10 @@ def set_to_subtype {α : Type*} (A : set α) (B : set α) : set A := λ x : A, �
 def pi_set_to_subtype {α : Type*} {β : α → Type*} (A : set α) (B : set α)
   (f : Π i : B, β i) : Π i : set_to_subtype A B, β i := λ ⟨i, hi⟩, f ⟨i, hi⟩
 
+lemma pi_set_to_subtype_def {α : Type*} {β : α → Type*} (A : set α) (B : set α)
+  (f : Π i : B, β i) (i : α) (hi : i ∈ A) (hi' : i ∈ B) :
+  pi_set_to_subtype A B f ⟨⟨i, hi⟩, hi'⟩ = f ⟨↑(⟨i, hi⟩ : A), hi'⟩ := rfl
+
 lemma pi_set_to_subtype_surjective {α : Type*} {β : α → Type*} (A : set α) (B : set α)
   : function.surjective (@pi_set_to_subtype _ β A B) := sorry
 

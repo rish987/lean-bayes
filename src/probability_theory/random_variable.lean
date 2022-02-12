@@ -177,9 +177,25 @@ lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
 lemma comap_subtype_subset (A : set ι) :
   @comap_subtype _ β _ A ≤ measurable_space.pi :=
 begin
-  simp_rw [comap_subtype, measurable_space.pi, measurable_space.comap_supr,
+  simp_rw [comap_subtype, measurable_space.pi, comap_supr,
     measurable_space.comap_comp, function.comp, pi_subtype],
   exact supr_le_supr2 (λ i, ⟨i, le_rfl⟩)
+end
+
+lemma pi_set_to_subtype_img_meas' {A B : set ι} (hAB : B ⊆ A) :
+  @measurable_space.pi ↥B _ _ = (@measurable_space.pi (set_to_subtype A B) _ _).comap (@pi_set_to_subtype _ β A B) :=
+begin
+  simp_rw [measurable_space.pi, comap_supr, comap_comp, function.comp],
+  refine le_antisymm (supr_le_supr2 (λ i, ⟨⟨⟨i, hAB i.property⟩, i.property⟩, _⟩)) (supr_le_supr2 (λ i, ⟨⟨i, i.property⟩, _⟩));
+  convert le_refl _; ext x; rw pi_set_to_subtype_def',
+  congr, exact subtype.eq rfl, congr
+end
+
+lemma pi_set_to_subtype_img_meas'' {A B : set ι} (hAB : B ⊆ A) :
+  (@measurable_space.pi ↥B _ _).map (@pi_set_to_subtype _ β A B) = (@measurable_space.pi (set_to_subtype A B) _ _) := 
+begin
+  rw pi_set_to_subtype_img_meas' hAB,
+  sorry
 end
 
 /-- The joint distribution induced by an indexed family of random variables `f`. -/
