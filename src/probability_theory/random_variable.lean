@@ -62,7 +62,8 @@ begin
   exact measurable_set.univ
 end
 
-lemma inter_of_generate_from_pi {ι : Type*} {α : ι → Type*} (C : Π i, set (set (α i))) (t : set (Π i, α i)) :
+lemma inter_of_generate_from_pi {ι : Type*} {α : ι → Type*}
+  (C : Π i, set (set (α i))) (t : set (Π i, α i)) :
   t ∈ set.pi set.univ '' set.pi set.univ (λ (i : ι), {s : set (α i) | C i s}) →
   ∃ (f : Π i, set (α i)), (∀ i, C i (f i)) ∧ t = ⋂ i, function.eval i ⁻¹' (f i) :=
 begin
@@ -124,7 +125,26 @@ end
 def cond_indep_sets_iff {α} [measurable_space α] (s1 s2 cs : set (set α))
   (μ : measure α) [is_probability_measure μ]
   (hs1 : s1 ⊆ measurable_set) (hs2 : s2 ⊆ measurable_set) (hcs : cs ⊆ measurable_set) :
-  cond_indep_sets s1 s2 cs μ ↔ (∀ (t1 ∈ s1) (t2 ∈ s2) (c ∈ cs), cond_indep_set' t1 t2 c μ) := sorry
+  cond_indep_sets s1 s2 cs μ ↔ (∀ (t1 ∈ s1) (t2 ∈ s2) (c ∈ cs), cond_indep_set' t1 t2 c μ) :=
+begin
+  have : (∀ (t1 ∈ s1) (t2 ∈ s2) (c ∈ cs), cond_indep_set' t1 t2 c μ) ↔ 
+  (∀ (c ∈ cs) (t1 ∈ s1) (t2 ∈ s2), cond_indep_set' t1 t2 c μ)
+    := by split; intros h _ _ _ _ _ _; apply h; assumption,
+  rw this, clear this,
+  rw cond_indep_sets,
+  -- TODO how to compress?
+  refine forall_congr _, intro c, refine forall_congr _, intro hc,
+  simp [cond_indep_set', cond_indep_set_def],
+  by_cases h : μ c = 0,
+  { refine iff_of_true _ _,
+    apply indep_sets_of_cond_null_measure _ _ _ _ (hcs hc) h,
+    intros, apply indep_sets_of_cond_null_measure _ _ _ _ (hcs hc) h, },
+  rw [indep_sets_eq, indep_sets'],
+  refine forall_congr _, intro, refine forall_congr _, intro ht1,
+  refine forall_congr _, intro, refine forall_congr _, intro ht2,
+  rw indep_set_iff_measure_inter_eq_mul (hs1 _) (hs2 _) _; try {assumption},
+  exact probability_theory.cond_prob_meas _ h
+end
 
 ------------
 
@@ -149,6 +169,9 @@ begin
     measurable_space.comap_comp, function.comp, pi_subtype],
   exact supr_le_supr2 (λ i, ⟨i, le_rfl⟩)
 end
+
+lemma pi_unsubtype_meas_meas (A : set ι) {a : set (Π i : A, β i)} (hma : measurable_set a) :
+   measurable_set (>[] a) := by refine comap_subtype_subset A _ ⟨a, hma, rfl⟩
 
 lemma pi_set_to_subtype_img_meas₁ {A B : set ι} (hAB : B ⊆ A) :
   @measurable_space.pi ↥B _ _ = (@measurable_space.pi (set_to_subtype A B) _ _).comap (@pi_set_to_subtype _ β A B) :=
@@ -180,17 +203,30 @@ begin
   rwa set.preimage_image_eq _ (pi_set_to_subtype_bijective hAB).injective
 end
 
+lemma pi_unsubtype_set_meas_meas {A B : set ι} (hAB : B ⊆ A) {b : set (Π i : B, β i)} (hmb : measurable_set b)
+  : measurable_set (>>[A] b) :=
+by exact pi_unsubtype_meas_meas _ (pi_set_to_subtype_img_meas hAB hmb)
+
 /-- The joint distribution induced by an indexed family of random variables `f`. -/
 def joint : measure (Π i : ι, β i) := map (λ a i, f i a) μ
 
-instance [is_probability_measure μ] : is_probability_measure (joint μ f) := sorry
+instance joint_prob_meas (hm : ∀ i : ι, measurable (f i)) [hp : is_probability_measure μ] :
+  is_probability_measure (joint μ f) :=
+begin
+  constructor,
+  rw [joint, measure.map_apply _ measurable_set.univ],
+  rw set.preimage_univ, exact hp.measure_univ,
+  exact measurable_pi_iff.mpr hm
+end
 
 /-- The marginal distribution induced by an indexed family of random variables `f`
 restricted to a subset of "marginalizing variable" indices `mv` (represented as
 an index subtype). -/
 def marginal (mv : set ι) : measure (Π i : mv, β i) := joint μ (pi_subtype mv f)
 
-instance [is_probability_measure μ] (mv : set ι) : is_probability_measure (marginal μ f mv) := sorry
+instance marginal_prob_meas (hm : ∀ i : ι, measurable (f i)) [is_probability_measure μ] (mv : set ι) :
+  is_probability_measure (marginal μ f mv)
+  := by rw marginal; exact probability_theory.joint_prob_meas _ _ (λ i, hm i)
 
 /-- Generic marginalization of the joint measure `μ` on the given subset of variables `mv`. -/
 def marginalization (μ : measure (Π i : ι, β i)) (mv : set ι) :
@@ -222,17 +258,29 @@ by { rw [marginal_eq_marginalization_aux _ _ hm, marginalization, map_apply _ hm
 
 lemma joint_cond_meas_of_marginal (mv : set ι) 
   (s : set (Π i : mv, β i)) (hms : measurable_set s) (hcs : (marginal μ f mv) s ≠ 0) :
-  joint μ f (>[] s) ≠ 0 := sorry
+  joint μ f (>[] s) ≠ 0 := by rwa marginal_def _ _ hm _ hms at hcs
 
 lemma marginal_cond_meas_of_joint (mv : set ι) 
   (s : set (Π i : mv, β i)) (hms : measurable_set s) (hcs : (joint μ f) (>[] s) ≠ 0) :
-  marginal μ f mv s ≠ 0 := sorry
+  marginal μ f mv s ≠ 0 := by rwa ← marginal_def _ _ hm _ hms at hcs
 
-lemma marginal_cond_meas_of_joint_inter {A B : set ι} {a : set (Π i : A, β i)} {b : set (Π i : B, β i)}
-  (hjc : joint μ f (>[] a ∩ >[] b) ≠ 0) : marginal μ f _ (>>[A ∪ B] a ∩ >>[] b) ≠ 0 := sorry
+lemma marginal_cond_meas_of_joint_inter {A B : set ι}
+  {a : set (Π i : A, β i)} (hma : measurable_set a)
+  {b : set (Π i : B, β i)} (hmb : measurable_set b)
+  (hjc : joint μ f (>[] a ∩ >[] b) ≠ 0) : marginal μ f _ (>>[A ∪ B] a ∩ >>[] b) ≠ 0 :=
+begin 
+  rwa [marginal_def, pi_unsubtype_union_img_inter], assumption,
+  refine measurable_set.inter _ _; refine pi_unsubtype_set_meas_meas _ _; finish
+end
 
-lemma joint_cond_meas_of_marginal_inter {A B : set ι} {a : set (Π i : A, β i)} {b : set (Π i : B, β i)}
-  (hmc : marginal μ f _ (>>[A ∪ B] a ∩ >>[] b) ≠ 0) : joint μ f (>[] a ∩ >[] b) ≠ 0 := sorry
+lemma joint_cond_meas_of_marginal_inter {A B : set ι}
+  {a : set (Π i : A, β i)} (hma : measurable_set a)
+  {b : set (Π i : B, β i)} (hmb : measurable_set b)
+  (hmc : marginal μ f _ (>>[A ∪ B] a ∩ >>[] b) ≠ 0) : joint μ f (>[] a ∩ >[] b) ≠ 0 :=
+begin 
+  rwa [marginal_def, pi_unsubtype_union_img_inter] at hmc, assumption,
+  refine measurable_set.inter _ _; refine pi_unsubtype_set_meas_meas _ _; finish
+end
 
 end marginal
 
@@ -278,6 +326,7 @@ theorem cond_def [is_probability_measure μ] (hm : ∀ i : ι, measurable (f i))
   (s : set (Π i : A, β i)) (hms : measurable_set s) :
   cond μ f A B c s = cond_measure (joint μ f) (>[] c) (>[] s) :=
 begin
+  haveI := probability_theory.joint_prob_meas μ f hm,
   rw [cond, marginal_def _ _ hm _ hms],
   congr, ext1 s' hms',
   have hm' := measurable_pi_iff.mpr hm,
@@ -289,8 +338,10 @@ begin
 end
 
 lemma independent_iff_cond_independent_empty [is_probability_measure μ]
-  (A B : set ι) : independent μ f A B ↔ cond_independent μ f A B ∅ :=
+  (hm : ∀ i : ι, measurable (f i)) (A B : set ι) :
+  independent μ f A B ↔ cond_independent μ f A B ∅ :=
 begin
+  haveI := probability_theory.joint_prob_meas μ f hm,
   rw cond_independent,
   have : @comap_subtype _ β _ ∅ = ⊥ :=
     by rw comap_subtype; convert @comap_bot _ _ (pi_subtype ∅); exact supr_emptyset',
@@ -312,6 +363,7 @@ theorem cond_independent_iff_cond_inter_irrel [is_probability_measure μ] (hm : 
   marginal μ f (B ∪ C) (>>[] b ∩ >>[] c) ≠ 0
   → cond μ f A (B ∪ C) (>>[] b ∩ >>[] c) = cond μ f A C c :=
 begin
+  haveI := probability_theory.joint_prob_meas μ f hm,
   rw [cond_independent, cond_indep, cond_indep_sets_iff],
   { -- FIXME this is just to pattern-match, can I avoid this somehow?
     change (
@@ -328,7 +380,7 @@ begin
     split; intro h,
     { intros b hmb c hmc hcmbc a hma,
       have : joint μ f (>[] b ∩ >[] c) ≠ 0
-        := joint_cond_meas_of_marginal_inter _ _ hm hcmbc,
+        := joint_cond_meas_of_marginal_inter _ _ hm hmb hmc hcmbc,
       rw set.inter_comm at this,
       rw [cond_def, cond_def]; try {assumption},
       convert (cond_indep_set_iff_cond_inter_irrel (joint μ f) _ _ _).mp
@@ -344,7 +396,7 @@ begin
       intro hcmbc,
       rw set.inter_comm at hcmbc,
       have : marginal μ f _ (>>[] b ∩ >>[] c) ≠ 0 
-        := marginal_cond_meas_of_joint_inter _ _ hm hcmbc,
+        := marginal_cond_meas_of_joint_inter _ _ hm hmb hmc hcmbc,
       have := h b _ c _ _ a hma; try {assumption},
       rw [cond_def, cond_def] at this; try {assumption},
       rwa [set.inter_comm, ← pi_unsubtype_union_img_inter],
@@ -362,7 +414,7 @@ theorem independent_iff_cond_irrel  [is_probability_measure μ] (hm : ∀ i : ι
   → cond μ f A B b = marginal μ f A :=
 begin
   convert cond_independent_iff_cond_inter_irrel μ f hm A B ∅; ext,
-  exact independent_iff_cond_independent_empty _ _ A B,
+  exact independent_iff_cond_independent_empty _ _ hm A B,
   refine forall_congr _, intro b,
   refine forall_congr _, intro hmb,
   haveI : subsingleton (Π i : (∅ : set ι), β i) := ⟨λ f g, by ext ⟨x, hx⟩; exact false.elim hx⟩,
