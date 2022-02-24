@@ -158,6 +158,10 @@ variables [Π i : ι, measurable_space (β i)]
 def comap_subtype (S : set ι) :
   measurable_space (Π i : ι, β i) := measurable_space.comap (pi_subtype S) measurable_space.pi
 
+lemma pi_ext {P : set α → Prop} :
+  (∀ x, ((measurable_space.pi).comap (λ a i, f i a)).measurable_set' x → P x)
+  ↔ (∀ x, measurable_set x → P ((λ a i, f i a) ⁻¹' x)) := set.maps_image_to _ _ _ _
+
 lemma comap_subtype_ext {P : set (Π i : ι, β i) → Prop} (A : set ι) :
   (∀ x, (comap_subtype A).measurable_set' x → P x)
   ↔ (∀ x, measurable_set x → P (>[A] x)) := set.maps_image_to _ _ _ _
@@ -296,9 +300,42 @@ def Independent {ι' : Type*} (S : ι' → set ι) : Prop :=
   Indep (λ i, comap_subtype (S i)) (joint μ f)
 
 /-- Two sets of random variables `A` and `B` are independent if the measurable spaces
-they incur on the joint distribution are independent. -/
+they incur on the event space `α` via `f` are independent w.r.t. `μ`. -/
 def independent (A B : set ι) : Prop :=
-  indep (comap_subtype A) (comap_subtype B) (joint μ f)
+  indep ((measurable_space.pi).comap (λ (a : α) (i : A), f i a))
+        ((measurable_space.pi).comap (λ (a : α) (i : B), f i a)) μ
+
+/-- Two sets of random variables `A` and `B` are independent if the measurable spaces
+they incur on the joint distribution are independent. -/
+def independent_meas (A B : set ι) (hm : ∀ i : ι, measurable (f i)) :
+  independent μ f A B ↔ indep (comap_subtype A) (comap_subtype B) (joint μ f)
+  :=
+begin
+  simp_rw [independent, indep, indep_sets_eq, indep_sets'],
+  change 
+    (∀ (t1 : set α)
+    (ht1 : (measurable_space.comap (λ (a : α) (i : ↥A), f ↑i a) measurable_space.pi).measurable_set' t1)
+    (t2 : set α)
+    (ht2 : (measurable_space.comap (λ (a : α) (i : ↥B), f ↑i a) measurable_space.pi).measurable_set' t2),
+      μ (t1 ∩ t2) = μ t1 * μ t2) ↔
+    ∀ (t1 : set (Π (i : ι), β i))
+    (ht1 : (comap_subtype A).measurable_set' t1)
+    (t2 : set (Π (i : ι), β i))
+    (ht2 : (comap_subtype B).measurable_set' t2), (joint μ f) (t1 ∩ t2) = (joint μ f) t1 * (joint μ f) t2,
+  simp_rw comap_subtype_ext,
+  simp_rw pi_ext,
+  refine forall_congr _, intro a, refine forall_congr _, intro hma,
+  refine forall_congr _, intro b, refine forall_congr _, intro hmb,
+  simp_rw [joint],
+  have hmusa : measurable_set (>[] a) := measurable_pi_subtype A hma,
+  have hmusb : measurable_set (>[] b) := measurable_pi_subtype B hmb,
+  conv_rhs
+  { rw map_apply (measurable_pi_iff.mpr hm) (hmusa.inter hmusb),
+    rw map_apply (measurable_pi_iff.mpr hm) (hmusa),
+    rw map_apply (measurable_pi_iff.mpr hm) (hmusb) },
+  rw iff_eq_eq,
+  refl
+end
 
 end definitions
 
@@ -314,10 +351,35 @@ def cond (A B : set ι) (c : set (Π i : B, β i)) : measure (Π i : A, β i) :=
   marginal (cond_measure μ ((λ a i, f i a) ⁻¹' (>[] c))) f A
 
 /-- Two sets of random variables `A` and `B` are independent given a third set `C`
-if the measurable spaces `A` and `B` incur on the joint distribution are independent
+if the measurable spaces `A` and `B` incur on the event space `α` via `f` are independent w.r.t. `μ`
 given any measurable set incurred by `C`. -/
 def cond_independent (A B C : set ι) : Prop :=
-  cond_indep (comap_subtype A) (comap_subtype B) (comap_subtype C).measurable_set' (joint μ f)
+  cond_indep ((measurable_space.pi).comap (λ (a : α) (i : A), f i a))
+             ((measurable_space.pi).comap (λ (a : α) (i : B), f i a)) 
+             ((measurable_space.pi).comap (λ (a : α) (i : C), f i a)).measurable_set' μ
+
+lemma cond_independent_def (A B C : set ι) :
+  cond_independent μ f A B C ↔
+  ∀ c (hc : ((measurable_space.pi).comap (λ (a : α) (i : C), f i a)).measurable_set' c),
+  independent (cond_measure μ c) f A B :=
+by refl
+
+lemma cond_independent_meas (A B C : set ι) (hm : ∀ i : ι, measurable (f i)) :
+  cond_independent μ f A B C ↔
+  cond_indep (comap_subtype A) (comap_subtype B) (comap_subtype C).measurable_set' (joint μ f) :=
+begin
+  simp_rw [cond_independent_def, independent_meas _ _ _ _ hm, cond_indep_def],
+  change _ ↔ 
+    ∀ (c : set (Π (i : ι), β i)),
+      (comap_subtype C).measurable_set' c →
+      indep (comap_subtype A) (comap_subtype B) (cond_measure (joint μ f) c),
+  simp_rw [comap_subtype_ext, pi_ext],
+  refine forall_congr _, intro c, refine forall_congr _, intro hmc,
+  rw iff_eq_eq, congr,
+  simp_rw [cond_measure, joint], simp, congr,
+  exact (map_apply (measurable_pi_iff.mpr hm) (measurable_pi_subtype C hmc)).symm,
+  exact (restrict_map (measurable_pi_iff.mpr hm) (measurable_pi_subtype C hmc)).symm
+end
 
 end definitions
 
@@ -342,7 +404,7 @@ lemma independent_iff_cond_independent_empty [is_probability_measure μ]
   independent μ f A B ↔ cond_independent μ f A B ∅ :=
 begin
   haveI := probability_theory.joint_prob_meas μ f hm,
-  rw cond_independent,
+  rw [cond_independent_meas _ _ _ _ _ hm, independent_meas _ _ _ _ hm],
   have : @comap_subtype _ β _ ∅ = ⊥ :=
     by rw comap_subtype; convert @comap_bot _ _ (pi_subtype ∅); exact supr_emptyset',
   rw [this, ← bot_measurable_space_eq_bot],
@@ -364,7 +426,7 @@ theorem cond_independent_iff_cond_inter_irrel [is_probability_measure μ] (hm : 
   → cond μ f A (B ∪ C) (>>[] b ∩ >>[] c) = cond μ f A C c :=
 begin
   haveI := probability_theory.joint_prob_meas μ f hm,
-  rw [cond_independent, cond_indep, cond_indep_sets_iff],
+  rw [cond_independent_meas _ _ _ _ _ hm, cond_indep, cond_indep_sets_iff],
   { -- FIXME this is just to pattern-match, can I avoid this somehow?
     change (
         ∀ (a : set (Π (i : ι), β i)), (comap_subtype A).measurable_set' a
