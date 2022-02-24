@@ -90,6 +90,14 @@ end
 
 end measure_theory
 
+namespace measurable_space
+
+def comap_pi {α : Type*} {ι : Type*} {β : ι → Type*} [Π i : ι, measurable_space (β i)] (f : Π (i : ι), α → β i) :
+  measurable_space α :=
+  ((measurable_space.pi).comap (λ (a : α) (i : ι), f i a))
+
+end measurable_space
+
 open measure_theory measure_theory.measure measurable_space
 
 namespace probability_theory
@@ -297,13 +305,12 @@ section definitions
 /-- A list of sets of random variables `S` is independent if the list of measurable spaces
 it incurs on the joint distribution is independent. -/
 def Independent {ι' : Type*} (S : ι' → set ι) : Prop :=
-  Indep (λ i, comap_subtype (S i)) (joint μ f)
+  Indep (λ i, (comap_pi (pi_subtype (S i) f))) μ
 
 /-- Two sets of random variables `A` and `B` are independent if the measurable spaces
 they incur on the event space `α` via `f` are independent w.r.t. `μ`. -/
 def independent (A B : set ι) : Prop :=
-  indep ((measurable_space.pi).comap (λ (a : α) (i : A), f i a))
-        ((measurable_space.pi).comap (λ (a : α) (i : B), f i a)) μ
+  indep (comap_pi (pi_subtype A f)) (comap_pi (pi_subtype B f)) μ
 
 /-- Two sets of random variables `A` and `B` are independent if the measurable spaces
 they incur on the joint distribution are independent. -/
@@ -354,9 +361,8 @@ def cond (A B : set ι) (c : set (Π i : B, β i)) : measure (Π i : A, β i) :=
 if the measurable spaces `A` and `B` incur on the event space `α` via `f` are independent w.r.t. `μ`
 given any measurable set incurred by `C`. -/
 def cond_independent (A B C : set ι) : Prop :=
-  cond_indep ((measurable_space.pi).comap (λ (a : α) (i : A), f i a))
-             ((measurable_space.pi).comap (λ (a : α) (i : B), f i a)) 
-             ((measurable_space.pi).comap (λ (a : α) (i : C), f i a)).measurable_set' μ
+  cond_indep (comap_pi (pi_subtype A f)) (comap_pi (pi_subtype B f)) 
+             (comap_pi (pi_subtype C f)).measurable_set' μ
 
 lemma cond_independent_def (A B C : set ι) :
   cond_independent μ f A B C ↔
